@@ -64,28 +64,25 @@ def load_imgs(location, img_type, num_imgs, width, height,num_channels):
 
   # begin decoding
   for i in range(num_imgs):
-    #Reads the file at the top of the queue, first arg is name, irrellevant
+    print(i)
+    # Reads the file at the top of the queue, first arg is name, irrellevant
     _, image_file = image_reader.read(voc_queue)
 
-    #Decoder that turns the above img reader string into a tensor
+    # Decoder that turns the above img reader string into a tensor
     voc_image = tf.image.decode_jpeg(
       contents = image_file,
       channels = num_channels)
-
-    #add to list of tensors
-    img_tensor.append(voc_image)
-    
-  
-  print("reshaping images ...")
-  #Reshape to the sppecifications wanted, wither cropping or padding
-  for img in img_tensor:
+    # reshape to specifications needed    
     img = tf.image.resize_image_with_crop_or_pad(
-      image = img, # current image
+      image = voc_image, # current image
       target_height = height, #given width
       target_width = width #given height
     )
-    # print("next imaage reshaped to: " + img.get_shape())
-  
+
+    #add to list of tensors
+    img_tensor.append(voc_image)
+
+
   return (img_tensor)
 
 
@@ -176,9 +173,6 @@ testing_img = load_imgs(
 #########################################################################################################
 trainlabels, testlabels = get_labels()
 #########################################################################################################
- 
- 
-
 
 
 # conv lay 1
@@ -202,20 +196,17 @@ filter_size5 = 3
 num_filters5 = 512
 
 
-
-
 #full conn lay
 fc_size1 = 1000
 
 n_hidden1 = 300
-n_hidden2 = 200
-n_outputs = 10
+n_hidden2 = 300
+n_outputs = 20
 learning_rate = 0.01 # grad descent param
 n_epochs = 40
 batch_size = 50
 scale = 0.0004 # l1 regularization param
 dropout_rate = 0.5
-mnist = tf.contrib.learn.datasets.load_dataset("mnist")
 
 
 X = tf.placeholder(tf.float32, shape=(None, n_inputs), name="X")
@@ -294,9 +285,11 @@ with tf.name_scope("eval"):
 
 init = tf.global_variables_initializer()
 saver = tf.train.Saver()
+print("starting sess")
 with tf.Session() as sess:
     init.run()
-    save_path = saver.save(sess, "./VOC_data")
+    print("started")
+    save_path = saver.save(sess, "./VOC_data/voc_model.ckpt")
     print("Model saved in path")
     # Restore variables from disk.
     # saver.restore(sess, "/tmp/model.ckpt")
@@ -306,9 +299,9 @@ with tf.Session() as sess:
     for epoch in range(n_epochs):
         start = 0
         for iteration in range(num_examples // batch_size):
-            X_batch = training_imgs[start:iteration*batch_size]
-            y_batch = trainlabels[start:iteration*batch_size]
-            start = (start + 1)*batch_size
+            X_batch = training_imgs[start*batch_size:iteration*batch_size]
+            y_batch = trainlabels[start*batch_size:iteration*batch_size]
+            start = (start + 1)
             sess.run(training_op,
                     feed_dict={X: X_batch, y: y_batch})
         acc_train = accuracy.eval(feed_dict={X: X_batch, y: y_batch})
