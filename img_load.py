@@ -6,56 +6,58 @@ import tensorflow as tf
 
 # a function to load images froma folder into a tensorflow dataset
 def load_imgs(location, img_type, num_imgs, width, height,num_channels):
-  location = location + "/*." + img_type
+  location = location + "*." + img_type
   print("reading from: " + location)
-
+  # location = location + "000005.jpg"
   #The queue for all the files in the firectory
   voc_queue = tf.train.string_input_producer(
   tf.train.match_filenames_once(location))
+  # print(voc_queue.dequeue_many(5012))
 
 
   #IMG reader, stores in string format
   image_reader = tf.WholeFileReader()
 
   #image tensor for read images above
-  img_tensor = np.array([])#img_tensor = []
+  img_tensor = []#img_tensor = []
 
   print("decoding images ...")
+  
+  sess = tf.InteractiveSession()
   init = tf.global_variables_initializer()
-  with tf.Session() as sess:
-    init.run()
+  init.run()
 
-    # begin decoding
-    for i in range(num_imgs):
-      print(i)
-      #Reads the file at the top of the queue, first arg is name, irrellevant
-      _, image_file = image_reader.read(voc_queue)
-      #Decoder that turns the above img reader string into a tensor
-      voc_image = tf.image.decode_jpeg(
-        contents = image_file,
-        channels = num_channels)
+  coord = tf.train.Coordinator()
+  threads = tf.train.start_queue_runners(coord=coord)
+  # begin decoding
+  for i in range(num_imgs):
+    print(i)
+    #Reads the file at the top of the queue, first arg is name, irrellevant
+    _, image_file = image_reader.read(voc_queue)
+    print(image_file)
+    #Decoder that turns the above img reader string into a tensor
+    voc_image = tf.image.decode_jpeg(
+      contents = image_file,
+      channels = num_channels)
 
-      img = tf.image.resize_image_with_crop_or_pad(
-        image = voc_image, # current image
-        target_height = height, #given width
-        target_width = width #given height
-      )
+    img = tf.image.resize_image_with_crop_or_pad(
+      image = voc_image, # current image
+      target_height = height, #given width
+      target_width = width #given height
+    )
+    print(img)
 
-      # print(img)
-      #add to list of tensors
-      np.append(img_tensor, img)
+    #add to list of tensors
+    img_tensor.append(img.eval())
+  
 
-    # print("reshaping images ...")
-    #Reshape to the sppecifications wanted, wither cropping or padding
-    # for img in img_tensor:
-    #   img = tf.image.resize_image_with_crop_or_pad(
-    #     image = img, # current image
-    #     target_height = height, #given width
-    #     target_width = width #given height
-    #   )
-      # print("next imaage reshaped to: " + img.get_shape())
-    
+  coord.request_stop()
+  coord.join(threads)
 
+  sess.close()
+
+  data = np.array(img_tensor)
+  print(data)
   return (img_tensor)
 
 
