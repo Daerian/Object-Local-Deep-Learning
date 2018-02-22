@@ -23,12 +23,6 @@ def load_imgs(location, img_type, num_imgs, width, height,num_channels):
 
   print("decoding images ...")
   
-  sess = tf.InteractiveSession()
-  init = tf.global_variables_initializer()
-  init.run()
-
-  coord = tf.train.Coordinator()
-  threads = tf.train.start_queue_runners(coord=coord)
   # begin decoding
   for i in range(num_imgs):
     print(i)
@@ -48,49 +42,48 @@ def load_imgs(location, img_type, num_imgs, width, height,num_channels):
     print(img)
 
     #add to list of tensors
-    img_tensor.append(img.eval())
+    img_tensor.append(img)
   
-
-  coord.request_stop()
-  coord.join(threads)
-
-  sess.close()
 
   data = np.array(img_tensor)
   print(data)
-  return (img_tensor)
+  return (data)
 
 
-
-# constants for height and width to resize all pics to
-width = 500 # width
-height = 500 # height 
-ch = 3 #number fo channels in this image set, 3 for RGB
-voc_num_train_imgs = 5011 # numeber of images in directory
-#VOC data location
-voc_train_location = "./datasets/VOC_2007/traindata/VOC2007/JPEGImages/"
-voc_img_type = "jpg"
-# call the img_loader
-training_imgs = load_imgs(
-  location = voc_train_location,
-  img_type = voc_img_type,
-  num_imgs = voc_num_train_imgs, 
-  width = width, 
-  height = height, 
-  num_channels = 3)
-
-# np.savez(file = './VOC_data/voc07_train.npy',tens)
-
-voc_num_test_imgs = 4952
-voc_test_location = "./datasets/VOC_2007/testdata/VOC2007/JPEGImages/"
-
-# call the img_loader
-testing_img = tens = load_imgs(
-    location = voc_test_location,
+def main(unused_arg):
+  # constants for height and width to resize all pics to
+  width = 500 # width
+  height = 500 # height 
+  ch = 3 #number fo channels in this image set, 3 for RGB
+  voc_num_train_imgs = 5011 # numeber of images in directory
+  #VOC data location
+  voc_train_location = "./datasets/VOC_2007/traindata/VOC2007/JPEGImages/"
+  voc_img_type = "jpg"
+  # call the img_loader
+  training_imgs = load_imgs(
+    location = voc_train_location,
     img_type = voc_img_type,
-    num_imgs = voc_num_test_imgs, 
+    num_imgs = voc_num_train_imgs, 
     width = width, 
     height = height, 
     num_channels = 3)
 
-np.savez('./VOC_data/voc07_test.npy', training_imgs, testing_img)
+  np.save('./VOC_data/voc07_train.npy',training_imgs)
+
+  voc_num_test_imgs = 4952
+  voc_test_location = "./datasets/VOC_2007/testdata/VOC2007/JPEGImages/"
+
+  # call the img_loader
+  testing_img = tens = load_imgs(
+      location = voc_test_location,
+      img_type = voc_img_type,
+      num_imgs = voc_num_test_imgs, 
+      width = width, 
+      height = height, 
+      num_channels = 3)
+
+  np.save('./VOC_data/voc07_test.npy', testing_img)
+
+
+if __name__ == "__main__":
+  tf.app.run(main=main)

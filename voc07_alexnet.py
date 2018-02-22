@@ -299,8 +299,8 @@ with tf.Session() as sess:
     for epoch in range(n_epochs):
         start = 0
         for iteration in range(num_examples // batch_size):
-            X_batch = training_imgs[start*batch_size:iteration*batch_size]
-            y_batch = trainlabels[start*batch_size:iteration*batch_size]
+            X_batch = training_imgs[start*batch_size:(iteration+1)*batch_size]
+            y_batch = trainlabels[start*batch_size:(iteration+1)*batch_size]
             start = (start + 1)
             sess.run(training_op,
                     feed_dict={X: X_batch, y: y_batch})
