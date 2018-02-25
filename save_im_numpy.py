@@ -54,34 +54,85 @@ import matplotlib.image as mpimg
 
 def main(unused_arg):
 
-    traindata = np.load("./VOC_data/voc07_train1.npy")
+    # path = "./datasets/VOC_2007/traindata/VOC2007/JPEGImages/"
+    # image_names = os.listdir(path)
+    # imagesz = []
+    # sess = tf.InteractiveSession()
+    # for i in range(len(image_names)):
+    #     print(i)
+    #     image_loc = path + "/" + image_names[i]
 
+    #     image = mpimg.imread(image_loc)
+    #     # print(image)
+    #     t = tf.image.resize_image_with_crop_or_pad(image, 500, 500)
+    #     padded = t.eval()
+    #     print(padded.shape)
+    #     imagesz.append(padded)
+
+    # data = np.array(imagesz)
+
+    # print(data)
+
+    # # sess.close()
+    # np.save('./VOC_data/voc07_train_padded.npy', data)
+
+    # imagesz = []
+    # data = None
+
+    path = "./datasets/VOC_2007/testdata/VOC2007/JPEGImages/"
+    image_names = os.listdir(path)
+    imagesz = []
     sess = tf.InteractiveSession()
-
-    l = traindata.shape
-
-    train_padded = np.array([])
-    for i in range(l[0]):
+    for i in range(len(image_names)):
         print(i)
-        t = tf.image.resize_image_with_crop_or_pad(traindata[i], 500, 500)
+        image_loc = path + "/" + image_names[i]
+
+        image = mpimg.imread(image_loc)
+        # print(image)
+        t = tf.image.resize_image_with_crop_or_pad(image, 500, 500)
         padded = t.eval()
         print(padded.shape)
-        np.append(train_padded, padded)
-    np.save('./VOC_data/voc07_train_padded.npy', train_padded)
+        imagesz.append(padded)
 
+    data = np.array(imagesz)
 
-    testdata = np.load("./VOC_data/voc07_test.npy")
-    l = testdata.shape
-    test_padded = np.array([])
-    for i in range(l[0]):
-        print(i)
-        t = tf.image.resize_image_with_crop_or_pad(testdata[i], 500, 500)
-        padded = t.eval()
-        print(padded.shape)
-        np.append(test_padded, padded)
-    np.save('./VOC_data/voc07_test_padded.npy', test_padded)
+    print(data)
+
+    np.save('./VOC_data/voc07_test_padded.npy', data)
     sess.close()
-    
+
+
+    #traindata = np.load("./VOC_data/voc07_train1.npy")
+
+    #sess = tf.InteractiveSession()
+
+    #l = traindata.shape
+
+    #train_padded = np.array([])
+    #for i in range(l[0]):
+    #   print(i)
+    #   t = tf.image.resize_image_with_crop_or_pad(traindata[i], 500, 500)
+    #   padded = t.eval()
+    #   print(padded.shape)
+    #   np.append(train_padded, padded)
+    #sess.close()
+    #np.save("./VOC_data/voc07_train_padded.npy", train_padded)
+
+
+    # testdata = np.load("./VOC_data/voc07_test.npy")
+    # sess = tf.InteractiveSession()
+
+    # l = testdata.shape
+    # test_padded = np.array([])
+    # for i in range(l[0]):
+    #     print(i)
+    #     t = tf.image.resize_image_with_crop_or_pad(testdata[i], 500, 500)
+    #     padded = t.eval()
+    #     print(padded.shape)
+    #     np.append(test_padded, padded)
+    # np.save('./VOC_data/voc07_test_padded.npy', test_padded)
+    # sess.close()
+
 
 
 if __name__ == "__main__":
