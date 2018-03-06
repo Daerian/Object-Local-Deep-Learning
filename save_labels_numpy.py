@@ -22,19 +22,23 @@ def main(unused_arg):
         coord = tf.train.Coordinator()
         threads = tf.train.start_queue_runners(coord=coord)
 
-        trainlabels = np.array([])
-        testlabels = np.array([])
+        # trainlabels = np.array([])
+        # testlabels = np.array([])
+        trainlabels = np.zeros(shape=(5011, 20))
+        testlabels = np.zeros(shape=(4952, 20))
         for i in range(5011):
             # Retrieve a single instance:
             print("GDAKMGDAKLGDKLFGKLFGALAFGJL " + str(i))
-            example = sess.run([multi_trainlabels])
-            np.append(trainlabels, example)
+            example = sess.run(multi_trainlabels)
+            # trainlabels = np.append(trainlabels, example)
+            trainlabels[i] = example
             # print(example)
             # print(type(multi_labels))
         
         for i in range(4952):
-            example = sess.run([multi_testlabels])
-            np.append(testlabels, example)
+            example = sess.run(multi_testlabels)
+            # np.append(testlabels, example)
+            testlabels[i] = example
 
 
     coord.request_stop()

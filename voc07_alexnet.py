@@ -220,17 +220,17 @@ def main(unused_arg):
             for iteration in range(num_examples // batch_size):
 
                 X_batch, y_batch = it.get_next()
-
+                [X_eval, y_eval] = sess.run([X_batch, y_batch])
                 #training
                 sess.run(training_op,
-                        feed_dict={X: X_batch, y: y_batch})
+                        feed_dict={X: X_eval, y: y_eval})
             acc_train = accuracy.eval(feed_dict={X: X_batch, y: y_batch})
             #acc_test = accuracy.eval(feed_dict={X: testing_img,
             #                                    y: testlabels})
         #     print(epoch, "Train accuracy:", acc_train, "Test accuracy:", acc_test)
         # save_path = saver.save(sess, "./my_model_final.ckpt")
             print(epoch, "Train accuracy:", acc_train)
-        #save_path = saver.save(sess, "./my_model_final.ckpt")
+        save_path = saver.save(sess, "./my_model_final.ckpt")
 
 
 if __name__ == '__main__':
