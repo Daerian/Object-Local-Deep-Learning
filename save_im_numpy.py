@@ -66,7 +66,7 @@ def main(unused_arg):
         t = tf.image.resize_image_with_crop_or_pad(traindata[i], 500, 500)
         padded = t.eval()
         print(padded.shape)
-        np.append(train_padded, padded)
+        train_padded = np.append(train_padded, padded)
     np.save('./VOC_data/voc07_train_padded.npy', train_padded)
 
 
@@ -78,7 +78,7 @@ def main(unused_arg):
         t = tf.image.resize_image_with_crop_or_pad(testdata[i], 500, 500)
         padded = t.eval()
         print(padded.shape)
-        np.append(test_padded, padded)
+        test_padded = np.append(test_padded, padded)
     np.save('./VOC_data/voc07_test_padded.npy', test_padded)
     sess.close()
     
