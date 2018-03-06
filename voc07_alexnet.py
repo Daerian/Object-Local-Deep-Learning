@@ -230,7 +230,7 @@ def main(unused_arg):
         #     print(epoch, "Train accuracy:", acc_train, "Test accuracy:", acc_test)
         # save_path = saver.save(sess, "./my_model_final.ckpt")
             print(epoch, "Train accuracy:", acc_train)
-        #save_path = saver.save(sess, "./my_model_final.ckpt")
+        save_path = saver.save(sess, "./my_model_final.ckpt")
 
 
 if __name__ == '__main__':
