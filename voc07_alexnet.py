@@ -64,31 +64,17 @@ voc_train_location = "./datasets/VOC_2007/traindata/VOC2007/JPEGImages/"
 voc_img_type = "jpg"
 
 # call the img_loader
-training_imgs = load_imgs(
-location = voc_train_location,
-img_type = voc_img_type,
-num_imgs = voc_num_train_imgs, 
-width = width, 
-height = height, 
-num_channels = num_channels)
 # #########################################################################################################
 voc_num_test_imgs = 4952
 voc_test_location = "./datasets/VOC_2007/testdata/VOC2007/JPEGImages/"
 
-# # call the img_loader
-testing_img = load_imgs(
-    location = voc_test_location,
-    img_type = voc_img_type,
-    num_imgs = voc_num_test_imgs, 
-    width = width, 
-    height = height, 
-    num_channels = num_channels)
+
 
 # imgs = np.load(".Object-Local-Deep-Learning/VOC_data/voc07_train.npy")
 # training_imgs = imgs['arr_1']
 # testing_imgs = imgs['arr_0']
 #########################################################################################################
-trainlabels, testlabels = get_labels()
+#trainlabels, testlabels = get_labels()
 #########################################################################################################
 
 
@@ -128,18 +114,28 @@ dropout_rate = 0.5
 def main(unused_arg):
 
     train_data = np.load("./VOC_data/voc07_train_padded.npy")
-    test_data = np.load("./VOC_data/voc07_test_padded.npy")
+    # test_data = np.load("./VOC_data/voc07_test_padded.npy")
     train_labels = np.load("./VOC_data/voc07_train_labels.npy")
-    test_labels = np.load("./VOC_data/voc07_test_labels.npy")
+    # test_labels = np.load("./VOC_data/voc07_test_labels.npy")
 
-    X = tf.placeholder(tf.float32, shape=(None, n_inputs), name="X")
+    
+
+    X = tf.placeholder(tf.float32, shape=(None, 500, 500, 3), name = "X")
     X_rs = tf.reshape(X, [-1, img_size, img_size, num_channels])
-    y = tf.placeholder(tf.int64, shape=(None), name="y")
+    y = tf.placeholder(tf.float32, shape=(None,20), name="y")
+    # # call the img_loader
+    train_dataset = tf.data.Dataset.from_tensor_slices((X,y)).repeat().batch(batch_size)
+    #bt = train_dataset.batch(50)
+
+    it = train_dataset.make_initializable_iterator()
+
+
 
     dl = partial(tf.layers.dense, activation = tf.nn.relu) # dense layer
 
     # set up graph
     with tf.name_scope("dnn"):
+        training = tf.placeholder_with_default(False, shape=(), name='training')
         bnl = partial(tf.layers.batch_normalization,
             training=training, momentum=0.9) # batch normalization layer
 
@@ -193,7 +189,7 @@ def main(unused_arg):
 
     # get loss function
     with tf.name_scope("loss"):
-        xentropy = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=y,
+        xentropy = tf.nn.sigmoid_cross_entropy_with_logits(labels=y,
                                                                 logits=logits)
         loss = tf.reduce_mean(xentropy, name="loss")
 
@@ -202,36 +198,39 @@ def main(unused_arg):
         optimizer = tf.train.MomentumOptimizer(learning_rate,momentum=0.9, use_nesterov=True)
         training_op = optimizer.minimize(loss)
 
-    with tf.name_scope("eval"):
-        correct = tf.nn.in_top_k(logits, y, 1)
-        accuracy = tf.reduce_mean(tf.cast(correct, tf.float32))
+    #with tf.name_scope("eval"):
+        # correct = tf.nn.in_top_k(logits, y, 1)
+        # accuracy = tf.reduce_mean(tf.cast(correct, tf.float32))
 
     init = tf.global_variables_initializer()
-    saver = tf.train.Saver()
+    # saver = tf.train.Saver()
     print("starting sess")
     with tf.Session() as sess:
         init.run()
         print("started")
-        save_path = saver.save(sess, "./VOC_data/voc_model.ckpt")
+        #save_path = saver.save(sess, "./VOC_data/voc_model.ckpt")
         print("Model saved in path")
         # Restore variables from disk.
         # saver.restore(sess, "/tmp/model.ckpt")
         # print("Model restored.")
 
+        sess.run(it.initializer, feed_dict={X:train_data, y: train_labels})
 
         for epoch in range(n_epochs):
-            start = 0
             for iteration in range(num_examples // batch_size):
-                X_batch = training_imgs[start*batch_size:(iteration+1)*batch_size]
-                y_batch = trainlabels[start*batch_size:(iteration+1)*batch_size]
-                start = (start + 1)
+
+                X_batch, y_batch = it.get_next()
+
+                #training
                 sess.run(training_op,
                         feed_dict={X: X_batch, y: y_batch})
             acc_train = accuracy.eval(feed_dict={X: X_batch, y: y_batch})
-            acc_test = accuracy.eval(feed_dict={X: testing_img,
-                                                y: testlabels})
-            print(epoch, "Train accuracy:", acc_train, "Test accuracy:", acc_test)
-        save_path = saver.save(sess, "./my_model_final.ckpt")
+            #acc_test = accuracy.eval(feed_dict={X: testing_img,
+            #                                    y: testlabels})
+        #     print(epoch, "Train accuracy:", acc_train, "Test accuracy:", acc_test)
+        # save_path = saver.save(sess, "./my_model_final.ckpt")
+            print(epoch, "Train accuracy:", acc_train)
+        #save_path = saver.save(sess, "./my_model_final.ckpt")
 
 
 if __name__ == '__main__':
