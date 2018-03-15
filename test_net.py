@@ -6,6 +6,7 @@ import time
 from datetime import timedelta
 import math
 from tensorflow.examples.tutorials.mnist import input_data
+from functools import partial
 
 # Convolutional Layer 1.
 filter_size1 = 5          # Convolution filters are 5 x 5 pixels.
@@ -14,6 +15,18 @@ num_filters1 = 16         # There are 16 of these filters.
 # Convolutional Layer 2.
 filter_size2 = 5          # Convolution filters are 5 x 5 pixels.
 num_filters2 = 36         # There are 36 of these filters.
+
+# convolutional layer 3.
+filter_size3 = 5
+num_filters3 = 36         # There are 36 of these filters.
+
+# convolutional layer 4.
+filter_size4 = 5
+num_filters4 = 36         # There are 36 of these filters.
+
+# convolutional layer 5.
+filter_size5 = 5
+num_filters5 = 36         # There are 36 of these filters.
 
 # Fully-connected layer.
 fc_size = 128             # Number of neurons in fully-connected laye
@@ -159,6 +172,10 @@ y_true_cls = tf.argmax(y_true, axis=1)
 
 def main(unused_args):
 
+    dl = partial(tf.layers.dense, activation = tf.nn.relu) # dense layer
+    training = tf.placeholder_with_default(False, shape=(), name='training')
+    bnl = partial(tf.layers.batch_normalization,
+            training=training, momentum=0.9) # batch normalization layer
 
     layer_conv1, weights_conv1 = \
         new_conv_layer(input=x_image,
@@ -166,31 +183,64 @@ def main(unused_args):
                     filter_size=filter_size1,
                     num_filters=num_filters1,
                     use_pooling=True)
+    bn1 = bnl(layer_conv1)
+    bn1_act = tf.nn.elu(bn1)
 
     layer_conv2, weights_conv2 = \
-        new_conv_layer(input=layer_conv1,
+        new_conv_layer(input=bn1_act,
                     num_input_channels=num_filters1,
                     filter_size=filter_size2,
                     num_filters=num_filters2,
                     use_pooling=True)
+    bn2 = bnl(layer_conv2)
+    bn2_act = tf.nn.elu(bn2)
+    
+    
+    layer_conv3, weights_conv3 = \
+            new_conv_layer(input=bn2_act,
+                num_input_channels=num_filters2,
+                filter_size=filter_size3,
+                num_filters=num_filters3,
+                use_pooling=False)
+    bn3 = bnl(layer_conv3)
+    bn3_act = tf.nn.elu(bn3)
+
+    layer_conv4, weights_conv4 = \
+            new_conv_layer(input=bn3_act,
+                num_input_channels=num_filters3,
+                filter_size=filter_size4,
+                num_filters=num_filters4,
+                use_pooling=False)
+
+    layer_conv5, weights_conv5 = \
+            new_conv_layer(input=layer_conv4,
+                num_input_channels=num_filters4,
+                filter_size=filter_size5,
+                num_filters=num_filters5,
+                use_pooling=True)
 
     layer_flat, num_features = flatten_layer(layer_conv2)
 
     layer_fc1 = new_fc_layer(input=layer_flat,
                             num_inputs=num_features,
                             num_outputs=fc_size,
-                            use_relu=True)
+                            use_relu=False)
 
     layer_fc2 = new_fc_layer(input=layer_fc1,
                             num_inputs=fc_size,
-                            num_outputs=num_classes,
+                            num_outputs=fc_size,
                             use_relu=False)
 
-    y_pred = tf.nn.softmax(layer_fc2)
+    layer_fc3 = new_fc_layer(input=layer_fc2,
+                            num_inputs=fc_size,
+                            num_outputs=num_classes,
+                            use_relu=True)
+
+    y_pred = tf.nn.softmax(layer_fc3)
 
     y_pred_cls = tf.argmax(y_pred, axis=1)
 
-    cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logits=layer_fc2,
+    cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logits=layer_fc3,
                                                             labels=y_true)
 
 
@@ -231,9 +281,6 @@ def main(unused_args):
 
             # Print it.
             print(msg.format(i + 1, acc))
-
-    # Update the total number of iterations performed.
-    total_iterations += num_iterations
 
     # Ending time.
     end_time = time.time()
