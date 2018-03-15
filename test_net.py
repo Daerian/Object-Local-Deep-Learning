@@ -31,12 +31,20 @@ num_filters5 = 36         # There are 36 of these filters.
 # Fully-connected layer.
 fc_size = 128             # Number of neurons in fully-connected laye
 
-data = input_data.read_data_sets('data/MNIST/', one_hot=True)
+#data = input_data.read_data_sets('data/MNIST/', one_hot=True)
 
-data.test.cls = np.argmax(data.test.labels, axis=1)
+#data.test.cls = np.argmax(data.test.labels, axis=1)
+
+train = np.load("./VOC_data/voc07_train_cropped.npy")
+test = np.load("./VOC_data/voc07_test_cropped.npy")
+
+train_labels = np.load("./VOC_data/voc07_train_labels.npy")
+test_labels = np.load("./VOC_data/voc07_test_labels.npy")
+
+
 
 # We know that MNIST images are 28 pixels in each dimension.
-img_size = 28
+img_size = 50
 
 # Images are stored in one-dimensional arrays of this length.
 img_size_flat = img_size * img_size
@@ -45,16 +53,16 @@ img_size_flat = img_size * img_size
 img_shape = (img_size, img_size)
 
 # Number of colour channels for the images: 1 channel for gray-scale.
-num_channels = 1
+num_channels = 3
 
 # Number of classes, one class for each of 10 digits.
-num_classes = 10
+num_classes = 20
 
 # Get the first images from the test-set.
-images = data.test.images[0:9]
+#images = data.test.images[0:9]
 
 # Get the true classes for those images.
-cls_true = data.test.cls[0:9]
+#cls_true = data.test.cls[0:9]
 
 def new_weights(shape):
     return tf.Variable(tf.truncated_normal(shape, stddev=0.05))
@@ -123,7 +131,7 @@ def new_fc_layer(input,          # The previous layer.
 
 # Counter for total number of iterations performed so far.
 total_iterations = 0
-train_batch_size = 64
+batch_size = 64
 
 def optimize(num_iterations, session, optimizer):
     # Ensure we update the global variable rather than a local copy.
@@ -135,7 +143,7 @@ def optimize(num_iterations, session, optimizer):
     for i in range(total_iterations,
                    total_iterations + num_iterations):
 
-        x_batch, y_true_batch = data.train.next_batch(train_batch_size)
+        x_batch, y_true_batch = it.get_next()
 
         feed_dict_train = {x: x_batch,
                            y_true: y_true_batch}
@@ -165,7 +173,7 @@ def optimize(num_iterations, session, optimizer):
     # Print the time-usage.
     print("Time usage: " + str(timedelta(seconds=int(round(time_dif)))))
 
-x = tf.placeholder(tf.float32, shape=[None, img_size_flat], name='x')
+x = tf.placeholder(tf.float32, shape=[None, img_size,img_size,num_channels], name='x')
 x_image = tf.reshape(x, [-1, img_size, img_size, num_channels])
 y_true = tf.placeholder(tf.float32, shape=[None, num_classes], name='y_true')
 y_true_cls = tf.argmax(y_true, axis=1)
@@ -257,14 +265,23 @@ def main(unused_args):
 
     # Ensure we update the global variable rather than a local copy.
     total_iterations = 10000
+    
+    # # call the img_loader
+    train_dataset = tf.data.Dataset.from_tensor_slices((x,y_true)).repeat().batch(batch_size)
+    #Itterator
+    it = train_dataset.make_initializable_iterator()
+    
+    session.run(it.initializer, feed_dict={x:train, y_true: train_labels})
+
 
     # Start-time used for printing time-usage below.
     start_time = time.time()
 
     for i in range(total_iterations):
                    #total_iterations + num_iterations):
+        print("iteration: " + str(i))
 
-        x_batch, y_true_batch = data.train.next_batch(train_batch_size)
+        x_batch, y_true_batch = it.get_next()
 
         feed_dict_train = {x: x_batch,
                            y_true: y_true_batch}
