@@ -112,7 +112,7 @@ def new_fc_layer(input,          # The previous layer.
 total_iterations = 0
 train_batch_size = 64
 
-def optimize(num_iterations, session):
+def optimize(num_iterations, session, optimizer):
     # Ensure we update the global variable rather than a local copy.
     global total_iterations
 
@@ -194,8 +194,10 @@ def main(unused_args):
                                                             labels=y_true)
 
 
-    cost = tf.reduce_mean(cross_entropy)
-    optimizer = tf.train.AdamOptimizer(learning_rate=1e-4).minimize(cost)
+    loss = tf.reduce_mean(cross_entropy)
+    #optimizer = tf.train.AdamOptimizer(learning_rate=1e-4).minimize(cost)
+    optimizer = tf.train.MomentumOptimizer(learning_rate=0.01,momentum=0.9, use_nesterov=True)
+    training_op = optimizer.minimize(loss)
 
     correct_prediction = tf.equal(y_pred_cls, y_true_cls)
     accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
@@ -203,12 +205,44 @@ def main(unused_args):
     session = tf.Session()
     session.run(tf.global_variables_initializer())
 
-    optimize(num_iterations=1,session=session)
+    # Ensure we update the global variable rather than a local copy.
+    total_iterations = 10000
 
-    optimize(num_iterations=99,session=session) # We already performed 1 iteration above.
+    # Start-time used for printing time-usage below.
+    start_time = time.time()
 
-    optimize(num_iterations=900,session=session) # We performed 100 iterations above.
-    optimize(num_iterations=9000,session=session) # We performed 1000 iterations above.
+    for i in range(total_iterations):
+                   #total_iterations + num_iterations):
+
+        x_batch, y_true_batch = data.train.next_batch(train_batch_size)
+
+        feed_dict_train = {x: x_batch,
+                           y_true: y_true_batch}
+
+        session.run(training_op, feed_dict=feed_dict_train)
+
+        # Print status every 100 iterations.
+        if i % 100 == 0:
+            # Calculate the accuracy on the training-set.
+            acc = session.run(accuracy, feed_dict=feed_dict_train)
+
+            # Message for printing.
+            msg = "Optimization Iteration: {0:>6}, Training Accuracy: {1:>6.1%}"
+
+            # Print it.
+            print(msg.format(i + 1, acc))
+
+    # Update the total number of iterations performed.
+    total_iterations += num_iterations
+
+    # Ending time.
+    end_time = time.time()
+
+    # Difference between start and end-times.
+    time_dif = end_time - start_time
+
+    # Print the time-usage.
+    print("Time usage: " + str(timedelta(seconds=int(round(time_dif)))))
     session.close()
 
 
