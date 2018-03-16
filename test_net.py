@@ -35,16 +35,16 @@ fc_size = 1000             # Number of neurons in fully-connected laye
 
 #data.test.cls = np.argmax(data.test.labels, axis=1)
 
-train = np.load("./VOC_data/voc07_train_cropped.npy")
-test = np.load("./VOC_data/voc07_test_cropped.npy")
+train = np.load("./VOC_data/voc07_train_cropped_150.npy")
+# test = np.load("./VOC_data/voc07_test_cropped_150.npy")
 
-train_labels = np.load("./VOC_data/voc07_train_labels.npy")
-test_labels = np.load("./VOC_data/voc07_test_labels.npy")
+train_labels = np.load("./VOC_data/voc07_train_labels3.npy")
+# test_labels = np.load("./VOC_data/voc07_test_labels3.npy")
 
 
 
 # We know that MNIST images are 28 pixels in each dimension.
-img_size = 50
+img_size = 150
 
 # Images are stored in one-dimensional arrays of this length.
 img_size_flat = img_size * img_size
@@ -56,13 +56,8 @@ img_shape = (img_size, img_size)
 num_channels = 3
 
 # Number of classes, one class for each of 10 digits.
-num_classes = 20
+num_classes = 2
 
-# Get the first images from the test-set.
-#images = data.test.images[0:9]
-
-# Get the true classes for those images.
-#cls_true = data.test.cls[0:9]
 
 def new_weights(shape):
     return tf.Variable(tf.truncated_normal(shape, stddev=0.05))
@@ -129,14 +124,31 @@ def new_fc_layer(input,          # The previous layer.
 
     return layer
 
-# Counter for total number of iterations performed so far.
-total_iterations = 0
 batch_size = 64
 
 x = tf.placeholder(tf.float32, shape=[None, img_size,img_size,num_channels], name='x')
 x_image = tf.reshape(x, [-1, img_size, img_size, num_channels])
 y_true = tf.placeholder(tf.float32, shape=[None, num_classes], name='y_true')
-y_true_cls = tf.argmax(y_true, axis=1)
+# y2 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y2')
+# y3 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y3')
+# y4 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y4')
+# y5 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y5')
+# y6 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y6')
+# y7 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y7')
+# y8 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y8')
+# y9 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y9')
+# y10 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y10')
+# y11 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y11')
+# y12 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y12')
+# y13 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y13')
+# y14 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y14')
+# y15 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y15')
+# y16 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y16')
+# y17 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y17')
+# y18 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y18')
+# y19 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y19')
+# y20 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y20')
+
 
 def main(unused_args):
 
@@ -189,6 +201,10 @@ def main(unused_args):
 
     layer_flat, num_features = flatten_layer(layer_conv2)
 
+    # fc1 = dl(layer_flat, fc_size)
+    # fc2 = dl(fc1, fc_size)
+    # logits = dl(fc2, num_classes, activation=None,name="outputs")
+
     layer_fc1 = new_fc_layer(input=layer_flat,
                             num_inputs=num_features,
                             num_outputs=fc_size,
@@ -202,7 +218,7 @@ def main(unused_args):
     layer_fc3 = new_fc_layer(input=layer_fc2,
                             num_inputs=fc_size,
                             num_outputs=num_classes,
-                            use_relu=True)
+                            use_relu=False)
 
     y_pred = tf.nn.softmax(layer_fc3)
 
@@ -217,7 +233,8 @@ def main(unused_args):
     optimizer = tf.train.MomentumOptimizer(learning_rate=0.01,momentum=0.9, use_nesterov=True)
     training_op = optimizer.minimize(loss)
 
-    correct_prediction = tf.equal(y_pred_cls, y_true_cls)
+    # correct_prediction = tf.equal(y_pred, y_true)
+    correct_prediction = tf.nn.in_top_k(y_pred_cls, y_true, 1)
     accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
     session = tf.Session()
@@ -231,18 +248,20 @@ def main(unused_args):
     train_dataset = tf.data.Dataset.from_tensor_slices((x,y_true)).repeat().batch(batch_size)
     #Itterator
     it = train_dataset.make_initializable_iterator()
+
+    lbls = np.zeros(shape=(5011, 2))
+    lbls[:,1] = np.abs(train_labels[:,0] - 1)
+    lbls[:,0] = train_labels[:,0]
     
-    session.run(it.initializer, feed_dict={x:train, y_true: train_labels})
+    session.run(it.initializer, feed_dict={x:train, y_true: lbls})
 
-
-    # Start-time used for printing time-usage below.
     start_time = time.time()
+    x_batch, y_true_batch = it.get_next()
 
     for i in range(total_iterations):
                    #total_iterations + num_iterations):
         print("iteration: " + str(i))
 
-        x_batch, y_true_batch = it.get_next()
 
         X_eval, y_eval = session.run([x_batch, y_true_batch])
 
@@ -257,10 +276,8 @@ def main(unused_args):
             acc = session.run(accuracy, feed_dict=feed_dict_train)
 
             # Message for printing.
-            msg = "Optimization Iteration: {0:>6}, Training Accuracy: {1:>6.1%}"
-
-            # Print it.
-            print(msg.format(i + 1, acc))
+            msg = "Optimization Iteration: " +str(i+1)+", Training Accuracy: " + str(acc)
+            print(msg)
 
     # Ending time.
     end_time = time.time()
