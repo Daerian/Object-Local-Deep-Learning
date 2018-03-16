@@ -28,24 +28,32 @@ def main(unused_arg):
         testlabels = np.zeros(shape=(4952, 20))
         for i in range(5011):
             # Retrieve a single instance:
-            print("GDAKMGDAKLGDKLFGKLFGALAFGJL " + str(i))
-            example = sess.run(multi_trainlabels)
+            print("train obs: " + str(i))
+            set1 = sess.run(multi_trainlabels)
             # trainlabels = np.append(trainlabels, example)
-            trainlabels[i] = example
+            trainlabels[i] = set1
+            trainlabels[i] = ((set1 +1) /2)
+            trainlabels[i][trainlabels[i] == 0.5] = 0
+
             # print(example)
             # print(type(multi_labels))
         
         for i in range(4952):
-            example = sess.run(multi_testlabels)
+            # Retrieve a single instance:
+            print("test obs: " + str(i))
+            set1 = sess.run(multi_testlabels)
             # np.append(testlabels, example)
-            testlabels[i] = example
-
+            testlabels[i] = set1
+            testlabels[i] = ((set1 +1) /2)
+            testlabels[i][testlabels[i] == 0.5] = 0
 
     coord.request_stop()
     coord.join(threads)
+    print("saving..")
+    np.save('./VOC_data/voc07_train_labels3.npy', trainlabels)
+    np.save('./VOC_data/voc07_test_labels3.npy', testlabels)
+    print("saved")
 
-    np.save('./VOC_data/voc07_train_labels.npy', trainlabels)
-    np.save('./VOC_data/voc07_test_labels.npy', testlabels)
 
 if __name__ == "__main__":
     tf.app.run(main=main)
