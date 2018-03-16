@@ -14,22 +14,22 @@ num_filters1 = 16         # There are 16 of these filters.
 
 # Convolutional Layer 2.
 filter_size2 = 5          # Convolution filters are 5 x 5 pixels.
-num_filters2 = 36         # There are 36 of these filters.
+num_filters2 = 128        # There are 36 of these filters.
 
 # convolutional layer 3.
 filter_size3 = 5
-num_filters3 = 36         # There are 36 of these filters.
+num_filters3 = 128         # There are 36 of these filters.
 
 # convolutional layer 4.
 filter_size4 = 5
-num_filters4 = 36         # There are 36 of these filters.
+num_filters4 = 256         # There are 36 of these filters.
 
 # convolutional layer 5.
 filter_size5 = 5
-num_filters5 = 36         # There are 36 of these filters.
+num_filters5 = 512         # There are 36 of these filters.
 
 # Fully-connected layer.
-fc_size = 128             # Number of neurons in fully-connected laye
+fc_size = 1000             # Number of neurons in fully-connected laye
 
 #data = input_data.read_data_sets('data/MNIST/', one_hot=True)
 
@@ -133,46 +133,6 @@ def new_fc_layer(input,          # The previous layer.
 total_iterations = 0
 batch_size = 64
 
-def optimize(num_iterations, session, optimizer):
-    # Ensure we update the global variable rather than a local copy.
-    global total_iterations
-
-    # Start-time used for printing time-usage below.
-    start_time = time.time()
-
-    for i in range(total_iterations,
-                   total_iterations + num_iterations):
-
-        x_batch, y_true_batch = it.get_next()
-
-        feed_dict_train = {x: x_batch,
-                           y_true: y_true_batch}
-
-        session.run(optimizer, feed_dict=feed_dict_train)
-
-        # Print status every 100 iterations.
-        if i % 100 == 0:
-            # Calculate the accuracy on the training-set.
-            acc = session.run(accuracy, feed_dict=feed_dict_train)
-
-            # Message for printing.
-            msg = "Optimization Iteration: {0:>6}, Training Accuracy: {1:>6.1%}"
-
-            # Print it.
-            print(msg.format(i + 1, acc))
-
-    # Update the total number of iterations performed.
-    total_iterations += num_iterations
-
-    # Ending time.
-    end_time = time.time()
-
-    # Difference between start and end-times.
-    time_dif = end_time - start_time
-
-    # Print the time-usage.
-    print("Time usage: " + str(timedelta(seconds=int(round(time_dif)))))
-
 x = tf.placeholder(tf.float32, shape=[None, img_size,img_size,num_channels], name='x')
 x_image = tf.reshape(x, [-1, img_size, img_size, num_channels])
 y_true = tf.placeholder(tf.float32, shape=[None, num_classes], name='y_true')
@@ -261,7 +221,8 @@ def main(unused_args):
     accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
     session = tf.Session()
-    session.run(tf.global_variables_initializer())
+    init = tf.global_variables_initializer()
+    session.run(init)
 
     # Ensure we update the global variable rather than a local copy.
     total_iterations = 10000
@@ -283,8 +244,10 @@ def main(unused_args):
 
         x_batch, y_true_batch = it.get_next()
 
-        feed_dict_train = {x: x_batch,
-                           y_true: y_true_batch}
+        X_eval, y_eval = session.run([x_batch, y_true_batch])
+
+        feed_dict_train = {x: X_eval,
+                           y_true: y_eval}
 
         session.run(training_op, feed_dict=feed_dict_train)
 
