@@ -74,7 +74,7 @@ def main(unused_arg):
   voc_test_location = "./datasets/VOC_2007/testdata/VOC2007/JPEGImages/"
 
   # call the img_loader
-  testing_img = tens = load_imgs(
+  testing_img = load_imgs(
       location = voc_test_location,
       img_type = voc_img_type,
       num_imgs = voc_num_test_imgs, 

@@ -26,7 +26,7 @@ num_filters4 = 256         # There are 36 of these filters.
 
 # convolutional layer 5.
 filter_size5 = 5
-num_filters5 = 512         # There are 36 of these filters.
+num_filters5 = 512         # There are 36 of these filters.s
 
 # Fully-connected layer.
 fc_size = 1000             # Number of neurons in fully-connected laye
@@ -35,7 +35,7 @@ fc_size = 1000             # Number of neurons in fully-connected laye
 
 #data.test.cls = np.argmax(data.test.labels, axis=1)
 
-train = np.load("./VOC_data/voc07_train_cropped_150.npy")
+train = np.load("./VOC_data/voc07_train_cropped.npy")
 # test = np.load("./VOC_data/voc07_test_cropped_150.npy")
 
 train_labels = np.load("./VOC_data/voc07_train_labels3.npy")
@@ -128,7 +128,7 @@ batch_size = 64
 
 x = tf.placeholder(tf.float32, shape=[None, img_size,img_size,num_channels], name='x')
 x_image = tf.reshape(x, [-1, img_size, img_size, num_channels])
-y_true = tf.placeholder(tf.float32, shape=[None, num_classes], name='y_true')
+y_true = tf.placeholder(tf.float32, shape=[None, 2], name='y_true')
 # y2 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y2')
 # y3 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y3')
 # y4 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y4')
@@ -150,7 +150,7 @@ y_true = tf.placeholder(tf.float32, shape=[None, num_classes], name='y_true')
 # y20 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y20')
 
 
-def main(unused_args):
+def run_net(y_labs):
 
     dl = partial(tf.layers.dense, activation = tf.nn.relu) # dense layer
     training = tf.placeholder_with_default(False, shape=(), name='training')
@@ -217,12 +217,13 @@ def main(unused_args):
 
     layer_fc3 = new_fc_layer(input=layer_fc2,
                             num_inputs=fc_size,
-                            num_outputs=num_classes,
+                            num_outputs=2,
                             use_relu=False)
 
     y_pred = tf.nn.softmax(layer_fc3)
 
     y_pred_cls = tf.argmax(y_pred, axis=1)
+    
 
     cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logits=layer_fc3,
                                                             labels=y_true)
@@ -230,11 +231,14 @@ def main(unused_args):
 
     loss = tf.reduce_mean(cross_entropy)
     #optimizer = tf.train.AdamOptimizer(learning_rate=1e-4).minimize(cost)
+    
     optimizer = tf.train.MomentumOptimizer(learning_rate=0.01,momentum=0.9, use_nesterov=True)
     training_op = optimizer.minimize(loss)
 
-    # correct_prediction = tf.equal(y_pred, y_true)
-    correct_prediction = tf.nn.in_top_k(y_pred_cls, y_true, 1)
+    correct_prediction = tf.equal(y_pred, y_true)
+    #y_true = tf.cast(y_true, tf.float32)
+    #y_pred_cls = tf.cast(y_pred_cls, tf.float32)
+    #correct_prediction = tf.nn.in_top_k(y_pred_cls, y_true, 1)
     accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
     session = tf.Session()
@@ -250,8 +254,8 @@ def main(unused_args):
     it = train_dataset.make_initializable_iterator()
 
     lbls = np.zeros(shape=(5011, 2))
-    lbls[:,1] = np.abs(train_labels[:,0] - 1)
-    lbls[:,0] = train_labels[:,0]
+    lbls[:,1] = np.abs(y_labs - 1)
+    lbls[:,0] = y_labs
     
     session.run(it.initializer, feed_dict={x:train, y_true: lbls})
 
@@ -289,6 +293,48 @@ def main(unused_args):
     print("Time usage: " + str(timedelta(seconds=int(round(time_dif)))))
     session.close()
 
+
+def main(unused_arg):
+    c0 = train_labels[:,0]
+    c1 = train_labels[:,1]
+    c2 = train_labels[:,2]
+    c3 = train_labels[:,3]
+    c4 = train_labels[:,4]
+    c5 = train_labels[:,5]
+    c6 = train_labels[:,6]
+    c7 = train_labels[:,7]
+    c8 = train_labels[:,8]
+    c9 = train_labels[:,9]
+    c10 = train_labels[:,10]
+    c11 = train_labels[:,11]
+    c12 = train_labels[:,12]
+    c13 = train_labels[:,13]
+    c14 = train_labels[:,14]
+    c15 = train_labels[:,15]
+    c16 = train_labels[:,16]
+    c17 = train_labels[:,17]
+    c18 = train_labels[:,18]
+    c19 = train_labels[:,19]
+    w0 = run_net(c0)
+    w1 = run_net(c1)
+    w2 = run_net(c2)
+    w3 = run_net(c3)
+    w4 = run_net(c4)
+    w5 = run_net(c5)
+    w6 = run_net(c6)
+    w7 = run_net(c7)
+    w8 = run_net(c8)
+    w9 = run_net(c9)
+    w10 = run_net(c10)
+    w11 = run_net(c11)
+    w12 = run_net(c12)
+    w13 = run_net(c13)
+    w14 = run_net(c14)
+    w15 = run_net(c15)
+    w16 = run_net(c16)
+    w17 = run_net(c17)
+    w18 = run_net(c18)
+    w19 = run_net(c19)
 
 if __name__ == '__main__':
     tf.app.run(main=main)
