@@ -128,29 +128,29 @@ batch_size = 64
 
 x = tf.placeholder(tf.float32, shape=[None, img_size,img_size,num_channels], name='x')
 x_image = tf.reshape(x, [-1, img_size, img_size, num_channels])
-y_true = tf.placeholder(tf.float32, shape=[None, 2], name='y_true')
-# y2 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y2')
-# y3 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y3')
-# y4 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y4')
-# y5 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y5')
-# y6 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y6')
-# y7 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y7')
-# y8 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y8')
-# y9 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y9')
-# y10 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y10')
-# y11 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y11')
-# y12 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y12')
-# y13 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y13')
-# y14 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y14')
-# y15 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y15')
-# y16 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y16')
-# y17 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y17')
-# y18 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y18')
-# y19 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y19')
-# y20 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y20')
+y0 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y0')
+y1 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y1')
+y2 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y2')
+y3 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y3')
+y4 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y4')
+y5 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y5')
+y6 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y6')
+y7 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y7')
+y8 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y8')
+y9 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y9')
+y10 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y10')
+y11 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y11')
+y12 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y12')
+y13 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y13')
+y14 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y14')
+y15 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y15')
+y16 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y16')
+y17 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y17')
+y18 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y18')
+y19 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y19')
 
 
-def run_net(y_labs):
+def run_net(y_labs, y_true):
 
     dl = partial(tf.layers.dense, activation = tf.nn.relu) # dense layer
     training = tf.placeholder_with_default(False, shape=(), name='training')
@@ -201,10 +201,6 @@ def run_net(y_labs):
 
     layer_flat, num_features = flatten_layer(layer_conv2)
 
-    # fc1 = dl(layer_flat, fc_size)
-    # fc2 = dl(fc1, fc_size)
-    # logits = dl(fc2, num_classes, activation=None,name="outputs")
-
     layer_fc1 = new_fc_layer(input=layer_flat,
                             num_inputs=num_features,
                             num_outputs=fc_size,
@@ -246,7 +242,7 @@ def run_net(y_labs):
     session.run(init)
 
     # Ensure we update the global variable rather than a local copy.
-    total_iterations = 10000
+    total_iterations = 1000
     
     # # call the img_loader
     train_dataset = tf.data.Dataset.from_tensor_slices((x,y_true)).repeat().batch(batch_size)
@@ -315,26 +311,26 @@ def main(unused_arg):
     c17 = train_labels[:,17]
     c18 = train_labels[:,18]
     c19 = train_labels[:,19]
-    w0 = run_net(c0)
-    w1 = run_net(c1)
-    w2 = run_net(c2)
-    w3 = run_net(c3)
-    w4 = run_net(c4)
-    w5 = run_net(c5)
-    w6 = run_net(c6)
-    w7 = run_net(c7)
-    w8 = run_net(c8)
-    w9 = run_net(c9)
-    w10 = run_net(c10)
-    w11 = run_net(c11)
-    w12 = run_net(c12)
-    w13 = run_net(c13)
-    w14 = run_net(c14)
-    w15 = run_net(c15)
-    w16 = run_net(c16)
-    w17 = run_net(c17)
-    w18 = run_net(c18)
-    w19 = run_net(c19)
+    w0 = run_net(c0, y0)
+    w1 = run_net(c1, y1)
+    w2 = run_net(c2, y2)
+    w3 = run_net(c3, y3)
+    w4 = run_net(c4, y4)
+    w5 = run_net(c5, y5)
+    w6 = run_net(c6, y6)
+    w7 = run_net(c7, y7)
+    w8 = run_net(c8, y8)
+    w9 = run_net(c9, y9)
+    w10 = run_net(c10, y19)
+    w11 = run_net(c11, y11)
+    w12 = run_net(c12, y12)
+    w13 = run_net(c13, y13)
+    w14 = run_net(c14, y14)
+    w15 = run_net(c15, y15)
+    w16 = run_net(c16, y16)
+    w17 = run_net(c17, y17)
+    w18 = run_net(c18, y18)
+    w19 = run_net(c19, y19)
 
 if __name__ == '__main__':
     tf.app.run(main=main)
