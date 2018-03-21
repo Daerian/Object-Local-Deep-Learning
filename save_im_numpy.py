@@ -10,7 +10,7 @@ import scipy.misc
 def main(unused_arg):
     gaussian_blur = 1
     path = "./datasets/VOC_2007/traindata/VOC2007/JPEGImages/"
-    path_to_image_names = "./datasets/VOC_2007/traindata/VOC2007/ImageSets/Main/aeroplane_train.txt"
+    path_to_image_names = "./datasets/VOC_2007/traindata/VOC2007/ImageSets/Main/aeroplane_val.txt"
     # image_names = os.listdir(path)
     image_names = open(path_to_image_names).readlines()
 
@@ -21,7 +21,7 @@ def main(unused_arg):
     #nn_images = np.zeros(shape=(amount_of_train_images, nn_size, nn_size, 3))
     sess = tf.InteractiveSession()
     # for i in range(len(image_names)):
-    print("Starting padding/blurring images..")
+    print("Starting cropping/blurring/nn_interpolation images..")
     for i in range(amount_of_train_images):
         print(i)
         # Get image
@@ -64,9 +64,9 @@ def main(unused_arg):
          #   (nn_size, nn_size))
         # nn_images[i] = nn_im[0].eval()
 
-    print("Saving padded/blurred..")
+    print("Saving cropped/blurred/nn_interpolation..")
     sess.close()
-    np.save('./VOC_data/voc07_train_only_blurred_nn_cropped.npy', cropped_nn_images)
+    np.save('./VOC_data/voc07_cv_only_blurred_nn_cropped.npy', cropped_nn_images)
     print("Done!")
     # np.save('./VOC_data/voc07_train_only_blurred_nn.npy', nn_images)
 

@@ -2,7 +2,7 @@ import tensorflow as tf
 import numpy as np
 
 def main(unused_arg):
-    filename_queue = tf.train.string_input_producer(["./VOC_data/trainval_labels.csv", "./VOC_data/test_labels.csv"])
+    filename_queue = tf.train.string_input_producer(["./VOC_data/train_only_labels.csv", "./VOC_data/test_labels.csv"])
     reader = tf.TextLineReader()
     train_key, train_vals = reader.read(filename_queue)
     test_key, test_vals = reader.read(filename_queue)
@@ -24,9 +24,9 @@ def main(unused_arg):
 
         # trainlabels = np.array([])
         # testlabels = np.array([])
-        trainlabels = np.zeros(shape=(5011, 20))
-        testlabels = np.zeros(shape=(4952, 20))
-        for i in range(5011):
+        trainlabels = np.zeros(shape=(2501, 20))
+        # testlabels = np.zeros(shape=(4952, 20))
+        for i in range(2501):
             # Retrieve a single instance:
             print("train obs: " + str(i))
             set1 = sess.run(multi_trainlabels)
@@ -38,20 +38,20 @@ def main(unused_arg):
             # print(example)
             # print(type(multi_labels))
         
-        for i in range(4952):
-            # Retrieve a single instance:
-            print("test obs: " + str(i))
-            set1 = sess.run(multi_testlabels)
-            # np.append(testlabels, example)
-            testlabels[i] = set1
-            testlabels[i] = ((set1 +1) /2)
-            testlabels[i][testlabels[i] == 0.5] = 0
+        # for i in range(4952):
+        #     # Retrieve a single instance:
+        #     print("test obs: " + str(i))
+        #     set1 = sess.run(multi_testlabels)
+        #     # np.append(testlabels, example)
+        #     testlabels[i] = set1
+        #     testlabels[i] = ((set1 +1) /2)
+        #     testlabels[i][testlabels[i] == 0.5] = 0
 
     coord.request_stop()
     coord.join(threads)
     print("saving..")
-    np.save('./VOC_data/voc07_train_labels3.npy', trainlabels)
-    np.save('./VOC_data/voc07_test_labels3.npy', testlabels)
+    np.save('./VOC_data/voc07_train_only_labels.npy', trainlabels)
+    # np.save('./VOC_data/voc07_test_labels3.npy', testlabels)
     print("saved")
 
 
