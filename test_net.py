@@ -165,28 +165,31 @@ def run_net(y_labs, y_true):
                     use_pooling=True)
     bn1 = bnl(inputs=layer_conv1)
     bn1_act = tf.nn.elu(bn1)
+    pool1 = tf.nn.max_pool(bn1_act, [1,2,2,1],[1,2,2,1], padding = 'VALID', name = "pool1")
 
     layer_conv2, weights_conv2 = \
-        new_conv_layer(input=bn1_act,
+        new_conv_layer(input=pool1,
                     num_input_channels=num_filters1,
                     filter_size=filter_size2,
                     num_filters=num_filters2,
                     use_pooling=True)
     bn2 = bnl(inputs=layer_conv2)
     bn2_act = tf.nn.elu(bn2)
+    pool2 = tf.nn.max_pool(bn2_act, [1,2,2,1],[1,2,2,1], padding = 'VALID', name = "pool2")
+
     
     
     layer_conv3, weights_conv3 = \
-            new_conv_layer(input=bn2_act,
+            new_conv_layer(input=pool2,
                 num_input_channels=num_filters2,
                 filter_size=filter_size3,
                 num_filters=num_filters3,
                 use_pooling=False)
-    bn3 = bnl(inputs=layer_conv3)
-    bn3_act = tf.nn.elu(bn3)
+    #bn3 = bnl(inputs=layer_conv3)
+    #bn3_act = tf.nn.elu(bn3)
 
     layer_conv4, weights_conv4 = \
-            new_conv_layer(input=bn3_act,
+            new_conv_layer(input=layer_conv3,
                 num_input_channels=num_filters3,
                 filter_size=filter_size4,
                 num_filters=num_filters4,
@@ -200,10 +203,12 @@ def run_net(y_labs, y_true):
                 filter_size=filter_size5,
                 num_filters=num_filters5,
                 use_pooling=True)
-    # bn5 = bnl(inputs=layer_conv5)
-    # bn5_act = tf.nn.elu(bn5)
+    bn5 = bnl(inputs=layer_conv5)
+    bn5_act = tf.nn.elu(bn5)
+    pool5 = tf.nn.max_pool(bn5_act, [1,2,2,1],[1,2,2,1], padding = 'VALID', name = "pool5")
 
-    layer_flat, num_features = flatten_layer(layer_conv5)
+
+    layer_flat, num_features = flatten_layer(pool5)
 
     layer_fc1 = dl(layer_flat, fc_size, activation=tf.nn.relu, use_bias=True)
     # bn6 = bnl(inputs=layer_fc1)
