@@ -56,7 +56,7 @@ img_shape = (img_size, img_size)
 num_channels = 3
 
 # Number of classes, one class for each of 10 digits.
-num_classes = 2
+num_classes = 1
 
 
 def new_weights(shape):
@@ -124,11 +124,11 @@ def new_fc_layer(input,          # The previous layer.
 
     return layer
 
-batch_size = 64
+batch_size = 50
 
 x = tf.placeholder(tf.float32, shape=[None, img_size,img_size,num_channels], name='x')
 x_image = tf.reshape(x, [-1, img_size, img_size, num_channels])
-y0 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y0')
+y0 = tf.placeholder(tf.int64, shape=(None), name='y0')
 # y1 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y1')
 # y2 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y2')
 # y3 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y3')
@@ -152,10 +152,10 @@ y0 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y0')
 
 def run_net(y_labs, y_true):
 
-    dl = partial(tf.layers.dense, activation = tf.nn.relu) # dense layer
+    dl = partial(tf.layers.dense, activation = tf.nn.relu, use_bias=True) # dense layer
     training = tf.placeholder_with_default(False, shape=(), name='training')
     bnl = partial(tf.layers.batch_normalization,
-            training=training, momentum=0.9) # batch normalization layer
+            inputs=training, momentum=0.9, center=True, scale=True) # batch normalization layer
 
     layer_conv1, weights_conv1 = \
         new_conv_layer(input=x_image,
@@ -163,88 +163,98 @@ def run_net(y_labs, y_true):
                     filter_size=filter_size1,
                     num_filters=num_filters1,
                     use_pooling=True)
-    #bn1 = bnl(layer_conv1)
-    #bn1_act = tf.nn.elu(bn1)
+    bn1 = bnl(inputs=layer_conv1)
+    bn1_act = tf.nn.elu(bn1)
 
     layer_conv2, weights_conv2 = \
-        new_conv_layer(input=layer_conv1,#bn1_act,
+        new_conv_layer(input=bn1_act,
                     num_input_channels=num_filters1,
                     filter_size=filter_size2,
                     num_filters=num_filters2,
                     use_pooling=True)
-    #bn2 = bnl(layer_conv2)
-    #bn2_act = tf.nn.elu(bn2)
+    bn2 = bnl(inputs=layer_conv2)
+    bn2_act = tf.nn.elu(bn2)
     
     
     layer_conv3, weights_conv3 = \
-            new_conv_layer(input=layer_conv2,#bn2_act,
+            new_conv_layer(input=bn2_act,
                 num_input_channels=num_filters2,
                 filter_size=filter_size3,
                 num_filters=num_filters3,
                 use_pooling=False)
-    #bn3 = bnl(layer_conv3)
-    #bn3_act = tf.nn.elu(bn3)
+    bn3 = bnl(inputs=layer_conv3)
+    bn3_act = tf.nn.elu(bn3)
 
     layer_conv4, weights_conv4 = \
-            new_conv_layer(input=layer_conv3,#bn3_act,
+            new_conv_layer(input=bn3_act,
                 num_input_channels=num_filters3,
                 filter_size=filter_size4,
                 num_filters=num_filters4,
                 use_pooling=False)
-    #bn4 = bnl(layer_conv4)
-    #bn4_act = tf.nn.elu(bn4)
+    # bn4 = bnl(inputs=layer_conv4)
+    # bn4_act = tf.nn.elu(bn4)
 
     layer_conv5, weights_conv5 = \
-            new_conv_layer(input=layer_conv4,#bn4_act,
+            new_conv_layer(input=layer_conv4,
                 num_input_channels=num_filters4,
                 filter_size=filter_size5,
                 num_filters=num_filters5,
                 use_pooling=True)
-    #bn5 = bnl(layer_conv5)
-    #bn5_act = tf.nn.elu(bn5)
+    # bn5 = bnl(inputs=layer_conv5)
+    # bn5_act = tf.nn.elu(bn5)
 
     layer_flat, num_features = flatten_layer(layer_conv5)
 
-    layer_fc1 = new_fc_layer(input=layer_flat,
-                            num_inputs=num_features,
-                            num_outputs=fc_size,
-                            use_relu=True)
-    #bn6 = bnl(layer_fc1)
-    #bn6_act = tf.nn.elu(bn6)
+    layer_fc1 = dl(layer_flat, fc_size, activation=tf.nn.relu, use_bias=True)
+    # bn6 = bnl(inputs=layer_fc1)
+    # bn6_act = tf.nn.elu(bn6)
+    layer_fc2 = dl(layer_fc1, fc_size, activation=tf.nn.relu, use_bias=True)
+    # bn7 = bnl(inputs=layer_fc2)
+    # bn7_act = tf.nn.elu(layer_fc2)
 
-    layer_fc2 = new_fc_layer(input=layer_fc1,
-                            num_inputs=fc_size,
-                            num_outputs=fc_size,
-                            use_relu=True)
-    #bn7 = bnl(layer_fc2)
-    #bn7_act = tf.nn.elu(layer_fc2)
+    logits = dl(layer_fc2, 1, activation=tf.nn.relu, use_bias=True)
 
-    layer_fc3 = new_fc_layer(input=layer_fc2,
-                            num_inputs=fc_size,
-                            num_outputs=2,
-                            use_relu=True)
+    # bn8 = bnl(inputs=layer_fc3, scale=True)
+    # logits = tf.nn.softmax(bn8)
+    # layer_fc1 = new_fc_layer(input=layer_flat,
+    #                         num_inputs=num_features,
+    #                         num_outputs=fc_size,
+    #                         use_relu=True)
+    # #bn6 = bnl(layer_fc1)
+    # #bn6_act = tf.nn.elu(bn6)
 
-    y_pred = tf.nn.softmax(layer_fc3)
+    # layer_fc2 = new_fc_layer(input=layer_fc1,
+    #                         num_inputs=fc_size,
+    #                         num_outputs=fc_size,
+    #                         use_relu=True)
+    # #bn7 = bnl(layer_fc2)
+    # #bn7_act = tf.nn.elu(layer_fc2)
 
-    y_pred_cls = tf.argmax(y_pred, axis=1)
+    # logits = new_fc_layer(input=layer_fc2,
+    #                         num_inputs=fc_size,
+    #                         num_outputs=1,
+    #                         use_relu=True)
+
+    # y_pred = tf.nn.softmax(logits)
+
+    # y_pred_cls = tf.argmax(y_pred, axis=1)
     
 
-    cross_entropy = tf.nn.softmax_cross_entropy_with_logits_v2(logits=layer_fc3,
-                                                            labels=y_true)
-
-
+    cross_entropy = tf.nn.softmax_cross_entropy_with_logits_v2(logits=logits,
+                                                            labels=tf.reshape(y_true, [batch_size, 1]))
     loss = tf.reduce_mean(cross_entropy)
     #optimizer = tf.train.AdamOptimizer(learning_rate=1e-4).minimize(cost)
     
-    optimizer = tf.train.MomentumOptimizer(learning_rate=0.00,momentum=0.9, use_nesterov=True)
-    #optimizer = tf.train.AdamOptimizer(learning_rate=0.000001)
-    #gradients, variables = zip(*eptimizer.compute_gradients(loss))
-    #capped_grads = [(tf.clip_by_value(grad, 1e-10, 1), var) for grad, var in grads]
+    optimizer = tf.train.MomentumOptimizer(learning_rate=0.01,momentum=0.9, use_nesterov=True)
+    grads = optimizer.compute_gradients(loss)
+    # gradients, variables = zip(*optimizer.compute_gradients(loss))
+    capped_grads = [(tf.clip_by_value(grad, 1e-10, 1), var) for grad, var in grads]
     #gradients, _ = tf.clip_by_global_norm(gradients, 
-    training_op = optimizer.minimize(loss)
+    # training_op = optimizer.minimize(loss)
+    training_op = optimizer.apply_gradients(capped_grads)
 
-    correct_prediction = tf.equal(y_pred, y_true)
-    y_true = tf.cast(y_true, tf.float32)
+    correct_prediction = tf.equal(tf.cast(logits, tf.int64), y_true)
+    # y_true = tf.cast(y_true, tf.float32)
     #y_pred_cls = tf.cast(y_pred_cls, tf.float32)
     #correct_prediction = tf.nn.in_top_k(y_pred_cls, y_true, 1)
     accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
@@ -261,11 +271,11 @@ def run_net(y_labs, y_true):
     #Itterator
     it = train_dataset.make_initializable_iterator()
 
-    lbls = np.zeros(shape=(2501, 2))
-    lbls[:,1] = np.abs(y_labs - 1)
-    lbls[:,0] = y_labs
+    # lbls = np.zeros(shape=(2501, 2))
+    # lbls[:,1] = np.abs(y_labs - 1)
+    # lbls[:,0] = y_labs
     
-    session.run(it.initializer, feed_dict={x:train, y_true: lbls})
+    session.run(it.initializer, feed_dict={x:train, y_true: y_labs})
 
     start_time = time.time()
     x_batch, y_true_batch = it.get_next()
@@ -274,14 +284,21 @@ def run_net(y_labs, y_true):
                    #total_iterations + num_iterations):
         print("iteration: " + str(i))
 
-
         X_eval, y_eval = session.run([x_batch, y_true_batch])
 
         feed_dict_train = {x: X_eval,
                            y_true: y_eval}
 
+        print("## LABELS_TRUE:")
+        print(y_eval)
+
         session.run(training_op, feed_dict=feed_dict_train)
 
+        print("## LOGITS:")
+        logs = session.run(logits, feed_dict=feed_dict_train)
+        print(logs)
+        print("## CONVERTED LOGITS:")
+        print(tf.cast(logs, tf.int64))
         # Print status every 100 iterations.
         if i % 5 == 0:
             # Calculate the accuracy on the training-set.
@@ -324,6 +341,7 @@ def main(unused_arg):
     # c17 = train_labels[:,17]
     # c18 = train_labels[:,18]
     # c19 = train_labels[:,19]
+    # w0 = run_net(np.transpose(np.array([c0])), y0)
     w0 = run_net(c0, y0)
     # w1 = run_net(c1, y1)
     # w2 = run_net(c2, y2)
