@@ -248,17 +248,16 @@ def run_net(y_labs, y_true):
     cross_entropy = tf.nn.softmax_cross_entropy_with_logits_v2(logits=logits,
                                                             labels=tf.reshape(y_true, [batch_size, 1]))
     loss = tf.reduce_mean(cross_entropy)
-    #optimizer = tf.train.AdamOptimizer(learning_rate=1e-4).minimize(cost)
     
     optimizer = tf.train.MomentumOptimizer(learning_rate=0.01,momentum=0.9, use_nesterov=True)
-    grads = optimizer.compute_gradients(loss)
+    # grads = optimizer.compute_gradients(loss)
     # gradients, variables = zip(*optimizer.compute_gradients(loss))
-    capped_grads = [(tf.clip_by_value(grad, 1e-10, 1), var) for grad, var in grads]
+    # capped_grads = [(tf.clip_by_value(grad, 1e-10, 1), var) for grad, var in grads]
     #gradients, _ = tf.clip_by_global_norm(gradients, 
-    # training_op = optimizer.minimize(loss)
-    training_op = optimizer.apply_gradients(capped_grads)
+    training_op = optimizer.minimize(loss)
+    # training_op = optimizer.apply_gradients(capped_grads)
 
-    correct_prediction = tf.equal(tf.cast(logits, tf.int64), y_true)
+    correct_prediction = tf.equal(tf.cast(tf.round(logits), tf.int64), y_true)
     # y_true = tf.cast(y_true, tf.float32)
     #y_pred_cls = tf.cast(y_pred_cls, tf.float32)
     #correct_prediction = tf.nn.in_top_k(y_pred_cls, y_true, 1)
@@ -294,16 +293,16 @@ def run_net(y_labs, y_true):
         feed_dict_train = {x: X_eval,
                            y_true: y_eval}
 
-        print("## LABELS_TRUE:")
-        print(y_eval)
+        # print("## LABELS_TRUE:")
+        # print(y_eval)
 
         session.run(training_op, feed_dict=feed_dict_train)
 
-        print("## LOGITS:")
-        logs = session.run(logits, feed_dict=feed_dict_train)
-        print(logs)
-        print("## CONVERTED LOGITS:")
-        print(tf.cast(logs, tf.int64))
+        # print("## LOGITS:")
+        # logs = session.run(logits, feed_dict=feed_dict_train)
+        # print(logs)
+        # print("## CONVERTED LOGITS:")
+        # print(session.run(tf.cast(tf.round(logs), tf.int64)))
         # Print status every 100 iterations.
         if i % 5 == 0:
             # Calculate the accuracy on the training-set.
