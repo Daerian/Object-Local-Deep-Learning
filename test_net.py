@@ -60,7 +60,7 @@ num_classes = 1
 
 
 def new_weights(shape):
-    return tf.Variable(tf.truncated_normal(shape, stddev=0.05))
+    return tf.Variable(tf.truncated_normal(shape, stddev=np.sqrt(2) * np.sqrt(2.0 / (shape[0]+shape[2]))))
 
 def new_biases(length):
     return tf.Variable(tf.constant(0.05, shape=[length]))
@@ -152,7 +152,7 @@ y0 = tf.placeholder(tf.int64, shape=(None), name='y0')
 
 def run_net(y_labs, y_true):
 
-    dl = partial(tf.layers.dense, activation = tf.nn.relu, use_bias=True) # dense layer
+    dl = partial(tf.layers.dense, activation = tf.nn.relu, use_bias=True, name=None) # dense layer
     training = tf.placeholder_with_default(False, shape=(), name='training')
     bnl = partial(tf.layers.batch_normalization,
             inputs=training, momentum=0.9, center=True, scale=True) # batch normalization layer
@@ -205,14 +205,14 @@ def run_net(y_labs, y_true):
 
     layer_flat, num_features = flatten_layer(layer_conv5)
 
-    layer_fc1 = dl(layer_flat, fc_size, activation=tf.nn.relu, use_bias=True)
+    layer_fc1 = dl(layer_flat, fc_size, activation=tf.nn.relu)
     # bn6 = bnl(inputs=layer_fc1)
     # bn6_act = tf.nn.elu(bn6)
-    layer_fc2 = dl(layer_fc1, fc_size, activation=tf.nn.relu, use_bias=True)
+    layer_fc2 = dl(layer_fc1, fc_size, activation=tf.nn.relu)
     # bn7 = bnl(inputs=layer_fc2)
     # bn7_act = tf.nn.elu(layer_fc2)
 
-    logits = dl(layer_fc2, 1, activation=tf.nn.relu, use_bias=True)
+    logits = dl(layer_fc2, 1, activation=tf.nn.relu, name="outputs")
 
     # bn8 = bnl(inputs=layer_fc3, scale=True)
     # logits = tf.nn.softmax(bn8)
