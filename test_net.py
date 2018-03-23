@@ -31,7 +31,7 @@ fc_size = 1000
 
 
 train = np.load("./VOC_data/voc07_train_only_blurred_nn_cropped.npy")
-# test = np.load("./VOC_data/voc07_test_cropped_150.npy")
+# cv = np.load("./VOC_data/voc07_cv_only_blurred_nn_cropped.npy")
 
 train_labels = np.load("./VOC_data/voc07_train_only_labels.npy")
 # test_labels = np.load("./VOC_data/voc07_test_labels3.npy")
@@ -214,7 +214,7 @@ def run_net(y_labs, y_true):
     session.run(init)
 
     # Ensure we update the global variable rather than a local copy.
-    total_iterations = 100
+    total_iterations = 101
 
     # # call the img_loader
     train_dataset = tf.data.Dataset.from_tensor_slices((x,y_true)).repeat().batch(batch_size)
@@ -229,13 +229,6 @@ def run_net(y_labs, y_true):
     # Iteratior object to get every batch in for loop
     x_batch, y_true_batch = it.get_next()
 
-    # print("INITIAL WEIGHTS:")
-    # print("fc1:")
-    # print(session.run(weights6))
-    # print("fc2:")
-    # print(session.run(weights7))
-    # print("outputs:")
-    # print(session.run(weights8))
     for i in range(total_iterations):
                    #total_iterations + num_iterations):
         print("iteration: " + str(i))
@@ -245,37 +238,24 @@ def run_net(y_labs, y_true):
         feed_dict_train = {x: X_eval,
                            y_true: y_eval}
 
-        print("## LABELS_TRUE:")
-        print(y_eval)
 
         session.run([training_op, extra_update], feed_dict=feed_dict_train)
-        # print("fc1:")
-        # print(session.run(weights6))
-        # print("fc2:")
-        # print(session.run(weights7))
-        # print("outputs:")
-        # print(session.run(weights8))
 
-        print("## LOGITS:")
-        logs = session.run(logits, feed_dict=feed_dict_train)
-        print(logs)
-        # print("## CONVERTED LOGITS:")
-        # print(session.run(tf.cast(tf.round(logs[0:6]), tf.int64)))
-
-        # Print status every 100 iterations.
+        # Print status every 5 iterations
         if i % 5 == 0:
-            # Calculate the accuracy on the training-set.
+            # Calculate the accuracy on the training-set
             acc = session.run(accuracy, feed_dict=feed_dict_train)
 
             # Message for printing.
             msg = "Optimization Iteration: " +str(i+1)+", Training Accuracy: " + str(acc)
             print(msg)
-        #print(optimizer.compute_gradients(loss))
+            print("Checkpoint..")
+            save_path = saver.save(session, "./temp_voc07_model.ckpt")
 
-    # Ending time.
+    # Ending time
     end_time = time.time()
     save_path = saver.save(session, "./voc07_model.ckpt")
-    # Difference between start and end-times.
+    # Difference between start and end-times
     time_dif = end_time - start_time
 
     # Print the time-usage.
