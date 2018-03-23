@@ -140,25 +140,25 @@ batch_size = 50
 x = tf.placeholder(tf.float32, shape=[None, img_size,img_size,num_channels], name='x')
 x_image = tf.reshape(x, [-1, img_size, img_size, num_channels])
 y0 = tf.placeholder(tf.int64, shape=(None), name='y0')
-# y1 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y1')
-# y2 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y2')
-# y3 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y3')
-# y4 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y4')
-# y5 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y5')
-# y6 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y6')
-# y7 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y7')
-# y8 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y8')
-# y9 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y9')
-# y10 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y10')
-# y11 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y11')
-# y12 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y12')
-# y13 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y13')
-# y14 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y14')
-# y15 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y15')
-# y16 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y16')
-# y17 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y17')
-# y18 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y18')
-# y19 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y19')
+# y1 = tf.placeholder(tf.int64, shape=(None), name='y2')
+# y2 = tf.placeholder(tf.int64, shape=(None), name='y2')
+# y3 = tf.placeholder(tf.int64, shape=(None), name='y3')
+# y4 = tf.placeholder(tf.int64, shape=(None), name='y4')
+# y5 = tf.placeholder(tf.int64, shape=(None), name='y5')
+# y6 = tf.placeholder(tf.int64, shape=(None), name='y6')
+# y7 = tf.placeholder(tf.int64, shape=(None), name='y7')
+# y8 = tf.placeholder(tf.int64, shape=(None), name='y8')
+# y9 = tf.placeholder(tf.int64, shape=(None), name='y9')
+# y10 = tf.placeholder(tf.int64, shape=(None), name='y10')
+# y11 = tf.placeholder(tf.int64, shape=(None), name='y11')
+# y12 = tf.placeholder(tf.int64, shape=(None), name='y12')
+# y13 = tf.placeholder(tf.int64, shape=(None), name='y13')
+# y14 = tf.placeholder(tf.int64, shape=(None), name='y14')
+# y15 = tf.placeholder(tf.int64, shape=(None), name='y15')
+# y16 = tf.placeholder(tf.int64, shape=(None), name='y16')
+# y17 = tf.placeholder(tf.int64, shape=(None), name='y17')
+# y18 = tf.placeholder(tf.int64, shape=(None), name='y18')
+# y19 = tf.placeholder(tf.int64, shape=(None), name='y19')
 def l_relu(z, name=None):
     return tf.maximum(0.01 * z, z, name=name)
 
@@ -242,7 +242,7 @@ def run_net(y_labs, y_true):
     weights7 = tf.get_default_graph().get_tensor_by_name(
         os.path.split(layer_fc2.name)[0] + '/kernel:0')
 
-    outputs = dl(bn7, 1, activation=tf.nn.relu, name="outputs")
+    outputs = dl(bn7, 20, activation=tf.nn.relu, name="outputs")
     pre_logits = bnl(outputs)
     logits = tf.nn.relu(pre_logits)
     weights8 = tf.get_default_graph().get_tensor_by_name(
@@ -274,7 +274,7 @@ def run_net(y_labs, y_true):
     # y_pred_cls = tf.argmax(y_pred, axis=1)
 
     cross_entropy = tf.nn.softmax_cross_entropy_with_logits_v2(logits=logits,
-                                                            labels=tf.reshape(y_true, [batch_size, 1]))
+                                                            labels=tf.reshape(y_true, [batch_size, 20]))
     loss = tf.reduce_mean(cross_entropy)
 
     optimizer = tf.train.MomentumOptimizer(learning_rate=0.01,momentum=0.9, use_nesterov=True)
@@ -307,7 +307,7 @@ def run_net(y_labs, y_true):
     # lbls = np.zeros(shape=(2501, 2))
     # lbls[:,1] = np.abs(y_labs - 1)
     # lbls[:,0] = y_labs
-    
+    saver = tf.train.Saver()
     session.run(it.initializer, feed_dict={x:train, y_true: y_labs})
 
     start_time = time.time()
@@ -358,7 +358,7 @@ def run_net(y_labs, y_true):
 
     # Ending time.
     end_time = time.time()
-
+    save_path = saver.save(session, "./voc07_model.ckpt")
     # Difference between start and end-times.
     time_dif = end_time - start_time
 
@@ -368,7 +368,7 @@ def run_net(y_labs, y_true):
 
 
 def main(unused_arg):
-    c0 = train_labels[:,0]
+    c0 = train_labels
     # c1 = train_labels[:,1]
     # c2 = train_labels[:,2]
     # c3 = train_labels[:,3]
