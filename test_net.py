@@ -1,40 +1,34 @@
-import matplotlib.pyplot as plt
 import tensorflow as tf
 import numpy as np
-from sklearn.metrics import confusion_matrix
 import time
 from datetime import timedelta
-import math
 from tensorflow.examples.tutorials.mnist import input_data
 from functools import partial
 import os
 
-# Convolutional Layer 1.
-filter_size1 = 5          # Convolution filters are 5 x 5 pixels.
-num_filters1 = 96         # There are 16 of these filters.
+# Convolutional Layer 1
+filter_size1 = 5
+num_filters1 = 96
 
-# Convolutional Layer 2.
-filter_size2 = 5          # Convolution filters are 5 x 5 pixels.
-num_filters2 = 256        # There are 36 of these filters.
+# Convolutional Layer 2
+filter_size2 = 5
+num_filters2 = 256
 
-# convolutional layer 3.
+# convolutional layer 3
 filter_size3 = 5
-num_filters3 = 384         # There are 36 of these filters.
+num_filters3 = 384
 
-# convolutional layer 4.
+# convolutional layer 4
 filter_size4 = 5
-num_filters4 = 384         # There are 36 of these filters.
+num_filters4 = 384
 
-# convolutional layer 5.
+# convolutional layer 5
 filter_size5 = 5
-num_filters5 = 256         # There are 36 of these filters.s
+num_filters5 = 256
 
-# Fully-connected layer.
-fc_size = 1000             # Number of neurons in fully-connected laye
+# Fully-connected layer
+fc_size = 1000
 
-#data = input_data.read_data_sets('data/MNIST/', one_hot=True)
-
-#data.test.cls = np.argmax(data.test.labels, axis=1)
 
 train = np.load("./VOC_data/voc07_train_only_blurred_nn_cropped.npy")
 # test = np.load("./VOC_data/voc07_test_cropped_150.npy")
@@ -42,22 +36,12 @@ train = np.load("./VOC_data/voc07_train_only_blurred_nn_cropped.npy")
 train_labels = np.load("./VOC_data/voc07_train_only_labels.npy")
 # test_labels = np.load("./VOC_data/voc07_test_labels3.npy")
 
-
-
-# We know that MNIST images are 28 pixels in each dimension.
 img_size = 227
 
-# Images are stored in one-dimensional arrays of this length.
-img_size_flat = img_size * img_size
-
-# Tuple with height and width of images used to reshape arrays.
-img_shape = (img_size, img_size)
-
-# Number of colour channels for the images: 1 channel for gray-scale.
 num_channels = 3
 
 # Number of classes, one class for each of 10 digits.
-num_classes = 1
+num_classes = 20
 
 
 def new_weights(shape):
@@ -66,28 +50,27 @@ def new_weights(shape):
 def new_biases(length):
     return tf.Variable(tf.constant(0.5, shape=[length]))
 
-def new_conv_layer(input,              # The previous layer.
-                   num_input_channels, # Num. channels in prev. layer.
-                   filter_size,        # Width and height of each filter.
-                   num_filters,        # Number of filters.
-                   use_pooling=True,   # Use 2x2 max-pooling.
-                   padding=['SAME', 'VALID'],
-                   use_relu=False,
-                   use_local_norm=False):
+def new_conv_layer(input,              # The previous layer
+                   num_input_channels, # Num. channels in prev. layer
+                   filter_size,        # Width and height of each filter
+                   num_filters,        # Number of filters
+                   use_pooling=True,   # Use 2x2 max-pooling
+                   padding=['SAME', 'VALID'], # Type of padding for conv/pooling respectively
+                   use_relu=False, # Should we ReLU after convolution layer
+                   use_local_norm=False): # should we use local resp. norm. for convolution layer
 
     shape = [filter_size, filter_size, num_input_channels, num_filters]
 
-    # Create new weights aka. filters with the given shape.
+    # Create new weights aka. filters with the given shape
     weights = new_weights(shape=shape)
 
-    # Create new biases, one for each filter.
+    # Create new biases, one for each filter
     biases = new_biases(length=num_filters)
 
     layer = tf.nn.conv2d(input=input,
                          filter=weights,
                          strides=[1, 1, 1, 1],
                          padding=padding[0])
-
     layer += biases
 
     if use_local_norm:
@@ -96,10 +79,10 @@ def new_conv_layer(input,              # The previous layer.
         bias=1,
         alpha=0.00002,
         beta=0.75)
+
     if use_relu:
         layer = tf.nn.relu(layer)
 
-    # Use pooling to down-sample the image resolution?
     if use_pooling:
         layer = tf.nn.max_pool(value=layer,
                                ksize=[1, 2, 2, 1],
@@ -109,7 +92,7 @@ def new_conv_layer(input,              # The previous layer.
     return layer, weights
 
 def flatten_layer(layer):
-    # Get the shape of the input layer.
+    # Get the shape of the input layer
     layer_shape = layer.get_shape()
 
     num_features = layer_shape[1:4].num_elements()
@@ -118,58 +101,24 @@ def flatten_layer(layer):
 
     return layer_flat, num_features
 
-def new_fc_layer(input,          # The previous layer.
-                 num_inputs,     # Num. inputs from prev. layer.
-                 num_outputs,    # Num. outputs.
-                 use_relu=True): # Use Rectified Linear Unit (ReLU)?
-
-    # Create new weights and biases.
-    weights = new_weights(shape=[num_inputs, num_outputs])
-    biases = new_biases(length=num_outputs)
-
-    layer = tf.matmul(input, weights) + biases
-
-    # Use ReLU?
-    if use_relu:
-        layer = tf.nn.relu(layer)
-
-    return layer
-
 batch_size = 50
 
 x = tf.placeholder(tf.float32, shape=[None, img_size,img_size,num_channels], name='x')
 x_image = tf.reshape(x, [-1, img_size, img_size, num_channels])
 y0 = tf.placeholder(tf.int64, shape=(None), name='y0')
-# y1 = tf.placeholder(tf.int64, shape=(None), name='y2')
-# y2 = tf.placeholder(tf.int64, shape=(None), name='y2')
-# y3 = tf.placeholder(tf.int64, shape=(None), name='y3')
-# y4 = tf.placeholder(tf.int64, shape=(None), name='y4')
-# y5 = tf.placeholder(tf.int64, shape=(None), name='y5')
-# y6 = tf.placeholder(tf.int64, shape=(None), name='y6')
-# y7 = tf.placeholder(tf.int64, shape=(None), name='y7')
-# y8 = tf.placeholder(tf.int64, shape=(None), name='y8')
-# y9 = tf.placeholder(tf.int64, shape=(None), name='y9')
-# y10 = tf.placeholder(tf.int64, shape=(None), name='y10')
-# y11 = tf.placeholder(tf.int64, shape=(None), name='y11')
-# y12 = tf.placeholder(tf.int64, shape=(None), name='y12')
-# y13 = tf.placeholder(tf.int64, shape=(None), name='y13')
-# y14 = tf.placeholder(tf.int64, shape=(None), name='y14')
-# y15 = tf.placeholder(tf.int64, shape=(None), name='y15')
-# y16 = tf.placeholder(tf.int64, shape=(None), name='y16')
-# y17 = tf.placeholder(tf.int64, shape=(None), name='y17')
-# y18 = tf.placeholder(tf.int64, shape=(None), name='y18')
-# y19 = tf.placeholder(tf.int64, shape=(None), name='y19')
+
 def l_relu(z, name=None):
     return tf.maximum(0.01 * z, z, name=name)
 
 def run_net(y_labs, y_true):
-    # Xavier initialization for weights to help avoid vanishing/exploding
-    # he_init = tf.contrib.layers.variance_scaling_initializer(factor=1, mode='FAN_AVG', uniform=False)
-    # dense layer
-    dl = partial(tf.layers.dense, activation = tf.nn.relu, use_bias=True, name=None)
+    # He initialization for weights to help avoid vanishing/exploding
+    he_init = tf.contrib.layers.variance_scaling_initializer(factor=1, mode='FAN_AVG', uniform=False)
+    # Dense layer
+    dl = partial(tf.layers.dense, activation = tf.nn.relu, kernel_initializer=he_init, use_bias=True, name=None)
     training = tf.placeholder_with_default(True, shape=(), name='training')
+    # Batch normalization layer
     bnl = partial(tf.layers.batch_normalization,
-            training=training, momentum=0.99, center=True, scale=True) # batch normalization layer
+            training=training, momentum=0.99, center=True, scale=True)
 
     layer_conv1, weights_conv1 = \
         new_conv_layer(input=x_image,
@@ -179,7 +128,6 @@ def run_net(y_labs, y_true):
                     use_pooling=True,
                     use_relu=True,
                     use_local_norm=True)
-    # pool1 = tf.nn.max_pool(layer_conv1, [1,2,2,1],[1,2,2,1], padding = 'VALID', name = "pool1")
     bn1 = bnl(inputs=layer_conv1)
     bn1_act = tf.nn.elu(bn1)
 
@@ -191,7 +139,6 @@ def run_net(y_labs, y_true):
                     use_pooling=True,
                     use_relu=True,
                     use_local_norm=True)
-    # pool2 = tf.nn.max_pool(layer_conv2, [1,2,2,1],[1,2,2,1], padding = 'VALID', name = "pool2")
     bn2 = bnl(inputs=layer_conv2)
     bn2_act = tf.nn.elu(bn2)
 
@@ -212,8 +159,6 @@ def run_net(y_labs, y_true):
                 use_pooling=False,
                 use_relu=True,
                 use_local_norm=False)
-    # bn4 = bnl(inputs=layer_conv4)
-    # bn4_act = tf.nn.elu(bn4)
 
     layer_conv5, weights_conv5 = \
             new_conv_layer(input=layer_conv4,
@@ -223,9 +168,7 @@ def run_net(y_labs, y_true):
                 use_pooling=True,
                 use_relu=True,
                 use_local_norm=False)
-    # pool5 = tf.nn.max_pool(layer_conv5, [1,2,2,1],[1,2,2,1], padding = 'VALID', name = "pool5")
-    # bn5 = bnl(inputs=pool5)
-    # bn5_act = tf.nn.elu(bn5)
+
 
 
     layer_flat, num_features = flatten_layer(layer_conv5)
@@ -242,7 +185,7 @@ def run_net(y_labs, y_true):
     weights7 = tf.get_default_graph().get_tensor_by_name(
         os.path.split(layer_fc2.name)[0] + '/kernel:0')
 
-    outputs = dl(bn7, 20, activation=tf.nn.relu, name="outputs")
+    outputs = dl(bn7, num_classes, activation=tf.nn.relu, name="outputs")
     pre_logits = bnl(outputs)
     logits = tf.nn.relu(pre_logits)
     weights8 = tf.get_default_graph().get_tensor_by_name(
@@ -250,46 +193,20 @@ def run_net(y_labs, y_true):
 
     logits = tf.clip_by_value(logits, 0, 1)
 
-    # layer_fc1 = new_fc_layer(input=layer_flat,
-    #                         num_inputs=num_features,
-    #                         num_outputs=fc_size,
-    #                         use_relu=True)
-    # #bn6 = bnl(layer_fc1)
-    # #bn6_act = tf.nn.elu(bn6)
-
-    # layer_fc2 = new_fc_layer(input=layer_fc1,
-    #                         num_inputs=fc_size,
-    #                         num_outputs=fc_size,
-    #                         use_relu=True)
-    # #bn7 = bnl(layer_fc2)
-    # #bn7_act = tf.nn.elu(layer_fc2)
-
-    # logits = new_fc_layer(input=layer_fc2,
-    #                         num_inputs=fc_size,
-    #                         num_outputs=1,
-    #                         use_relu=True)
-
-    # y_pred = tf.nn.softmax(logits)
-
-    # y_pred_cls = tf.argmax(y_pred, axis=1)
-
+    # Cross entropy cost function
     cross_entropy = tf.nn.softmax_cross_entropy_with_logits_v2(logits=logits,
-                                                            labels=tf.reshape(y_true, [batch_size, 20]))
+                                                            labels=tf.reshape(y_true, [batch_size, num_classes]))
     loss = tf.reduce_mean(cross_entropy)
-
+    # We will be using momemtum descent with nesterov optimizationaa
     optimizer = tf.train.MomentumOptimizer(learning_rate=0.01,momentum=0.9, use_nesterov=True)
-    # grads = optimizer.compute_gradients(loss)
-    # gradients, variables = zip(*optimizer.compute_gradients(loss))
-    # capped_grads = [(tf.clip_by_value(grad, 1e-10, 1), var) for grad, var in grads]
-    #gradients, _ = tf.clip_by_global_norm(gradients, 
+    # Operations needed to run every iteration
     training_op = optimizer.minimize(loss)
-    # training_op = optimizer.apply_gradients(capped_grads)
+    # Needed to deal with batch normalization operations
     extra_update = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
 
+    # Calculate accuracy; since logits is a float, it will round to 0 or 1 and then cast to int
+    # for comparisons
     correct_prediction = tf.equal(tf.cast(tf.round(logits), tf.int64), y_true)
-    # y_true = tf.cast(y_true, tf.float32)
-    #y_pred_cls = tf.cast(y_pred_cls, tf.float32)
-    #correct_prediction = tf.nn.in_top_k(y_pred_cls, y_true, 1)
     accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
     session = tf.Session()
@@ -304,13 +221,12 @@ def run_net(y_labs, y_true):
     #Iterator
     it = train_dataset.make_initializable_iterator()
 
-    # lbls = np.zeros(shape=(2501, 2))
-    # lbls[:,1] = np.abs(y_labs - 1)
-    # lbls[:,0] = y_labs
+    # Object to save our model after training
     saver = tf.train.Saver()
     session.run(it.initializer, feed_dict={x:train, y_true: y_labs})
 
     start_time = time.time()
+    # Iteratior object to get every batch in for loop
     x_batch, y_true_batch = it.get_next()
 
     # print("INITIAL WEIGHTS:")
