@@ -7,10 +7,11 @@ from datetime import timedelta
 import math
 from tensorflow.examples.tutorials.mnist import input_data
 from functools import partial
+import os
 
 # Convolutional Layer 1.
 filter_size1 = 5          # Convolution filters are 5 x 5 pixels.
-num_filters1 = 16         # There are 16 of these filters.
+num_filters1 = 96         # There are 16 of these filters.
 
 # Convolutional Layer 2.
 filter_size2 = 5          # Convolution filters are 5 x 5 pixels.
@@ -18,7 +19,7 @@ num_filters2 = 256        # There are 36 of these filters.
 
 # convolutional layer 3.
 filter_size3 = 5
-num_filters3 = 256         # There are 36 of these filters.
+num_filters3 = 384         # There are 36 of these filters.
 
 # convolutional layer 4.
 filter_size4 = 5
@@ -60,16 +61,19 @@ num_classes = 1
 
 
 def new_weights(shape):
-    return tf.Variable(tf.truncated_normal(shape, stddev=np.sqrt(2) * np.sqrt(2.0 / (shape[0]+shape[2]))))
+    return tf.Variable(tf.truncated_normal(shape, stddev=np.sqrt(2) * np.sqrt(2.0 / (shape[2]+shape[3]))))
 
 def new_biases(length):
-    return tf.Variable(tf.constant(0.05, shape=[length]))
+    return tf.Variable(tf.constant(0.5, shape=[length]))
 
 def new_conv_layer(input,              # The previous layer.
                    num_input_channels, # Num. channels in prev. layer.
                    filter_size,        # Width and height of each filter.
                    num_filters,        # Number of filters.
-                   use_pooling=True):  # Use 2x2 max-pooling.
+                   use_pooling=True,   # Use 2x2 max-pooling.
+                   padding=['SAME', 'VALID'],
+                   use_relu=False,
+                   use_local_norm=False):
 
     shape = [filter_size, filter_size, num_input_channels, num_filters]
 
@@ -82,18 +86,25 @@ def new_conv_layer(input,              # The previous layer.
     layer = tf.nn.conv2d(input=input,
                          filter=weights,
                          strides=[1, 1, 1, 1],
-                         padding='SAME')
+                         padding=padding[0])
 
     layer += biases
+
+    if use_local_norm:
+        layer = tf.nn.local_response_normalization(layer,
+        depth_radius=2,
+        bias=1,
+        alpha=0.00002,
+        beta=0.75)
+    if use_relu:
+        layer = tf.nn.relu(layer)
 
     # Use pooling to down-sample the image resolution?
     if use_pooling:
         layer = tf.nn.max_pool(value=layer,
                                ksize=[1, 2, 2, 1],
                                strides=[1, 2, 2, 1],
-                               padding='SAME')
-
-    layer = tf.nn.relu(layer)
+                               padding=padding[1])
 
     return layer, weights
 
@@ -148,52 +159,59 @@ y0 = tf.placeholder(tf.int64, shape=(None), name='y0')
 # y17 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y17')
 # y18 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y18')
 # y19 = tf.placeholder(tf.float32, shape=[None, num_classes], name='y19')
-
+def l_relu(z, name=None):
+    return tf.maximum(0.01 * z, z, name=name)
 
 def run_net(y_labs, y_true):
-
-    dl = partial(tf.layers.dense, activation = tf.nn.relu, use_bias=True, name=None) # dense layer
-    training = tf.placeholder_with_default(False, shape=(), name='training')
+    # Xavier initialization for weights to help avoid vanishing/exploding
+    # he_init = tf.contrib.layers.variance_scaling_initializer(factor=1, mode='FAN_AVG', uniform=False)
+    # dense layer
+    dl = partial(tf.layers.dense, activation = tf.nn.relu, use_bias=True, name=None)
+    training = tf.placeholder_with_default(True, shape=(), name='training')
     bnl = partial(tf.layers.batch_normalization,
-            inputs=training, momentum=0.9, center=True, scale=True) # batch normalization layer
+            training=training, momentum=0.99, center=True, scale=True) # batch normalization layer
 
     layer_conv1, weights_conv1 = \
         new_conv_layer(input=x_image,
                     num_input_channels=num_channels,
                     filter_size=filter_size1,
                     num_filters=num_filters1,
-                    use_pooling=True)
+                    use_pooling=True,
+                    use_relu=True,
+                    use_local_norm=True)
+    # pool1 = tf.nn.max_pool(layer_conv1, [1,2,2,1],[1,2,2,1], padding = 'VALID', name = "pool1")
     bn1 = bnl(inputs=layer_conv1)
     bn1_act = tf.nn.elu(bn1)
-    pool1 = tf.nn.max_pool(bn1_act, [1,2,2,1],[1,2,2,1], padding = 'VALID', name = "pool1")
 
     layer_conv2, weights_conv2 = \
-        new_conv_layer(input=pool1,
+        new_conv_layer(input=bn1_act,
                     num_input_channels=num_filters1,
                     filter_size=filter_size2,
                     num_filters=num_filters2,
-                    use_pooling=True)
+                    use_pooling=True,
+                    use_relu=True,
+                    use_local_norm=True)
+    # pool2 = tf.nn.max_pool(layer_conv2, [1,2,2,1],[1,2,2,1], padding = 'VALID', name = "pool2")
     bn2 = bnl(inputs=layer_conv2)
     bn2_act = tf.nn.elu(bn2)
-    pool2 = tf.nn.max_pool(bn2_act, [1,2,2,1],[1,2,2,1], padding = 'VALID', name = "pool2")
 
-    
-    
     layer_conv3, weights_conv3 = \
-            new_conv_layer(input=pool2,
+            new_conv_layer(input=bn2_act,
                 num_input_channels=num_filters2,
                 filter_size=filter_size3,
                 num_filters=num_filters3,
-                use_pooling=False)
-    #bn3 = bnl(inputs=layer_conv3)
-    #bn3_act = tf.nn.elu(bn3)
+                use_pooling=False,
+                use_relu=True,
+                use_local_norm=False)
 
     layer_conv4, weights_conv4 = \
             new_conv_layer(input=layer_conv3,
                 num_input_channels=num_filters3,
                 filter_size=filter_size4,
                 num_filters=num_filters4,
-                use_pooling=False)
+                use_pooling=False,
+                use_relu=True,
+                use_local_norm=False)
     # bn4 = bnl(inputs=layer_conv4)
     # bn4_act = tf.nn.elu(bn4)
 
@@ -202,25 +220,36 @@ def run_net(y_labs, y_true):
                 num_input_channels=num_filters4,
                 filter_size=filter_size5,
                 num_filters=num_filters5,
-                use_pooling=True)
-    bn5 = bnl(inputs=layer_conv5)
-    bn5_act = tf.nn.elu(bn5)
-    pool5 = tf.nn.max_pool(bn5_act, [1,2,2,1],[1,2,2,1], padding = 'VALID', name = "pool5")
+                use_pooling=True,
+                use_relu=True,
+                use_local_norm=False)
+    # pool5 = tf.nn.max_pool(layer_conv5, [1,2,2,1],[1,2,2,1], padding = 'VALID', name = "pool5")
+    # bn5 = bnl(inputs=pool5)
+    # bn5_act = tf.nn.elu(bn5)
 
 
-    layer_flat, num_features = flatten_layer(pool5)
+    layer_flat, num_features = flatten_layer(layer_conv5)
 
-    layer_fc1 = dl(layer_flat, fc_size, activation=tf.nn.relu)
-    # bn6 = bnl(inputs=layer_fc1)
+    layer_fc1 = dl(layer_flat, fc_size, activation=tf.nn.relu, name="fc1")
+    bn6 = bnl(layer_fc1)
     # bn6_act = tf.nn.elu(bn6)
-    layer_fc2 = dl(layer_fc1, fc_size, activation=tf.nn.relu)
-    # bn7 = bnl(inputs=layer_fc2)
-    # bn7_act = tf.nn.elu(layer_fc2)
+    weights6 = tf.get_default_graph().get_tensor_by_name(
+        os.path.split(layer_fc1.name)[0] + '/kernel:0')
 
-    logits = dl(layer_fc2, 1, activation=tf.nn.relu, name="outputs")
+    layer_fc2 = dl(bn6, fc_size, activation=tf.nn.relu, name="fc2")
+    bn7 = bnl(layer_fc2)
+    # bn7_act = tf.nn.elu(bn7)
+    weights7 = tf.get_default_graph().get_tensor_by_name(
+        os.path.split(layer_fc2.name)[0] + '/kernel:0')
 
-    # bn8 = bnl(inputs=layer_fc3, scale=True)
-    # logits = tf.nn.softmax(bn8)
+    outputs = dl(bn7, 1, activation=tf.nn.relu, name="outputs")
+    pre_logits = bnl(outputs)
+    logits = tf.nn.relu(pre_logits)
+    weights8 = tf.get_default_graph().get_tensor_by_name(
+        os.path.split(outputs.name)[0] + '/kernel:0')
+
+    logits = tf.clip_by_value(logits, 0, 1)
+
     # layer_fc1 = new_fc_layer(input=layer_flat,
     #                         num_inputs=num_features,
     #                         num_outputs=fc_size,
@@ -243,12 +272,11 @@ def run_net(y_labs, y_true):
     # y_pred = tf.nn.softmax(logits)
 
     # y_pred_cls = tf.argmax(y_pred, axis=1)
-    
 
     cross_entropy = tf.nn.softmax_cross_entropy_with_logits_v2(logits=logits,
                                                             labels=tf.reshape(y_true, [batch_size, 1]))
     loss = tf.reduce_mean(cross_entropy)
-    
+
     optimizer = tf.train.MomentumOptimizer(learning_rate=0.01,momentum=0.9, use_nesterov=True)
     # grads = optimizer.compute_gradients(loss)
     # gradients, variables = zip(*optimizer.compute_gradients(loss))
@@ -256,6 +284,7 @@ def run_net(y_labs, y_true):
     #gradients, _ = tf.clip_by_global_norm(gradients, 
     training_op = optimizer.minimize(loss)
     # training_op = optimizer.apply_gradients(capped_grads)
+    extra_update = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
 
     correct_prediction = tf.equal(tf.cast(tf.round(logits), tf.int64), y_true)
     # y_true = tf.cast(y_true, tf.float32)
@@ -269,10 +298,10 @@ def run_net(y_labs, y_true):
 
     # Ensure we update the global variable rather than a local copy.
     total_iterations = 100
-    
+
     # # call the img_loader
     train_dataset = tf.data.Dataset.from_tensor_slices((x,y_true)).repeat().batch(batch_size)
-    #Itterator
+    #Iterator
     it = train_dataset.make_initializable_iterator()
 
     # lbls = np.zeros(shape=(2501, 2))
@@ -284,6 +313,13 @@ def run_net(y_labs, y_true):
     start_time = time.time()
     x_batch, y_true_batch = it.get_next()
 
+    # print("INITIAL WEIGHTS:")
+    # print("fc1:")
+    # print(session.run(weights6))
+    # print("fc2:")
+    # print(session.run(weights7))
+    # print("outputs:")
+    # print(session.run(weights8))
     for i in range(total_iterations):
                    #total_iterations + num_iterations):
         print("iteration: " + str(i))
@@ -293,16 +329,23 @@ def run_net(y_labs, y_true):
         feed_dict_train = {x: X_eval,
                            y_true: y_eval}
 
-        # print("## LABELS_TRUE:")
-        # print(y_eval)
+        print("## LABELS_TRUE:")
+        print(y_eval)
 
-        session.run(training_op, feed_dict=feed_dict_train)
+        session.run([training_op, extra_update], feed_dict=feed_dict_train)
+        # print("fc1:")
+        # print(session.run(weights6))
+        # print("fc2:")
+        # print(session.run(weights7))
+        # print("outputs:")
+        # print(session.run(weights8))
 
-        # print("## LOGITS:")
-        # logs = session.run(logits, feed_dict=feed_dict_train)
-        # print(logs)
+        print("## LOGITS:")
+        logs = session.run(logits, feed_dict=feed_dict_train)
+        print(logs)
         # print("## CONVERTED LOGITS:")
-        # print(session.run(tf.cast(tf.round(logs), tf.int64)))
+        # print(session.run(tf.cast(tf.round(logs[0:6]), tf.int64)))
+
         # Print status every 100 iterations.
         if i % 5 == 0:
             # Calculate the accuracy on the training-set.
