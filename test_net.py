@@ -31,10 +31,10 @@ fc_size = 1000
 
 
 train = np.load("./VOC_data/voc07_train_only_blurred_nn_cropped.npy")
-# cv = np.load("./VOC_data/voc07_cv_only_blurred_nn_cropped.npy")
+cv = np.load("./VOC_data/voc07_cv_only_blurred_nn_cropped.npy")
 
 train_labels = np.load("./VOC_data/voc07_train_only_labels.npy")
-# test_labels = np.load("./VOC_data/voc07_test_labels3.npy")
+cv_labels = np.load("./VOC_data/voc07_cv_only_labels.npy")
 
 img_size = 227
 
@@ -102,10 +102,15 @@ def flatten_layer(layer):
     return layer_flat, num_features
 
 batch_size = 50
+batch_size_cv = 250
 
 x = tf.placeholder(tf.float32, shape=[None, img_size,img_size,num_channels], name='x')
 x_image = tf.reshape(x, [-1, img_size, img_size, num_channels])
 y0 = tf.placeholder(tf.int64, shape=(None), name='y0')
+
+x_cv = tf.placeholder(tf.float32, shape=[None, img_size,img_size,num_channels], name='x')
+x_cv_im = tf.reshape(x_cv, [-1, img_size, img_size, num_channels])
+y_cv = tf.placeholder(tf.int64, shape=(None), name='y_cv')
 
 def l_relu(z, name=None):
     return tf.maximum(0.01 * z, z, name=name)
@@ -218,16 +223,20 @@ def run_net(y_labs, y_true):
 
     # # call the img_loader
     train_dataset = tf.data.Dataset.from_tensor_slices((x,y_true)).repeat().batch(batch_size)
+    cv_dataset = tf.data.Dataset.from_tensor_slices((x_cv_im,y_cv)).repeat().batch(batch_size)
     #Iterator
     it = train_dataset.make_initializable_iterator()
+    it_cv = cv_dataset.make_initializable_iterator()
 
     # Object to save our model after training
     saver = tf.train.Saver()
     session.run(it.initializer, feed_dict={x:train, y_true: y_labs})
+    session.run(it_cv, feed_dict={x_cv:cv, y_cv: cv_labels})
 
     start_time = time.time()
     # Iteratior object to get every batch in for loop
     x_batch, y_true_batch = it.get_next()
+    x_cv_batch, y_cv_batch = it_cv.get_next()
 
     for i in range(total_iterations):
                    #total_iterations + num_iterations):
@@ -251,6 +260,12 @@ def run_net(y_labs, y_true):
             print(msg)
             print("Checkpoint..")
             save_path = saver.save(session, "./temp_voc07_model.ckpt")
+            print("Computer CV Accuracy..")
+            x_eval_cv, y_cv_eval = session.run([x_cv_batch, y_cv_batch])
+            cv_acc = session.run(accuracy, feed_dict={x: x_eval_cv,
+                                                    y_true: y_cv_eval})
+            print("Cross Validation Accuracy: " + str(cv_acc))
+
 
     # Ending time
     end_time = time.time()
@@ -265,46 +280,7 @@ def run_net(y_labs, y_true):
 
 def main(unused_arg):
     c0 = train_labels
-    # c1 = train_labels[:,1]
-    # c2 = train_labels[:,2]
-    # c3 = train_labels[:,3]
-    # c4 = train_labels[:,4]
-    # c5 = train_labels[:,5]
-    # c6 = train_labels[:,6]
-    # c7 = train_labels[:,7]
-    # c8 = train_labels[:,8]
-    # c9 = train_labels[:,9]
-    # c10 = train_labels[:,10]
-    # c11 = train_labels[:,11]
-    # c12 = train_labels[:,12]
-    # c13 = train_labels[:,13]
-    # c14 = train_labels[:,14]
-    # c15 = train_labels[:,15]
-    # c16 = train_labels[:,16]
-    # c17 = train_labels[:,17]
-    # c18 = train_labels[:,18]
-    # c19 = train_labels[:,19]
-    # w0 = run_net(np.transpose(np.array([c0])), y0)
     w0 = run_net(c0, y0)
-    # w1 = run_net(c1, y1)
-    # w2 = run_net(c2, y2)
-    # w3 = run_net(c3, y3)
-    # w4 = run_net(c4, y4)
-    # w5 = run_net(c5, y5)
-    # w6 = run_net(c6, y6)
-    # w7 = run_net(c7, y7)
-    # w8 = run_net(c8, y8)
-    # w9 = run_net(c9, y9)
-    # w10 = run_net(c10, y19)
-    # w11 = run_net(c11, y11)
-    # w12 = run_net(c12, y12)
-    # w13 = run_net(c13, y13)
-    # w14 = run_net(c14, y14)
-    # w15 = run_net(c15, y15)
-    # w16 = run_net(c16, y16)
-    # w17 = run_net(c17, y17)
-    # w18 = run_net(c18, y18)
-    # w19 = run_net(c19, y19)
 
 if __name__ == '__main__':
     tf.app.run(main=main)
