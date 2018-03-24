@@ -193,23 +193,24 @@ def run_net(y_labs, y_true):
 
     outputs = dl(bn7, num_classes, activation=tf.nn.relu, name="outputs")
     pre_logits = bnl(outputs)
-    logits = tf.nn.softmax(pre_logits)
+    logits = tf.nn.sigmoid(pre_logits)
     #weights8 = tf.get_default_graph().get_tensor_by_name(
     #    os.path.split(outputs.name)[0] + '/kernel:0')
 
     #logits = tf.clip_by_value(logits, 0, 1)
 
     # Cross entropy cost function
-    cross_entropy = tf.nn.softmax_cross_entropy_with_logits_v2(logits=logits,
-                                                            labels=tf.reshape(y_true, [batch_size, num_classes]))
+    cross_entropy = tf.nn.sigmoid_cross_entropy_with_logits(logits=logits,
+                                                            labels=tf.cast(tf.reshape(y_true, [batch_size, num_classes]), tf.float32))
     loss = tf.reduce_mean(cross_entropy)
     # We will be using momemtum descent with nesterov optimizationaa
     optimizer = tf.train.MomentumOptimizer(learning_rate=0.01,momentum=0.9, use_nesterov=True)
     # Operations needed to run every iteration
-    training_op = optimizer.minimize(loss)
+    #training_op = optimizer.minimize(loss)
     # Needed to deal with batch normalization operations
     extra_update = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-
+    with tf.control_dependencies(extra_update):
+        training_op = optimizer.minimize(loss)
     # Calculate accuracy; since logits is a float, it will round to 0 or 1 and then cast to int
     # for comparisons
     correct_prediction = tf.equal(tf.cast(tf.round(logits), tf.int64), y_true)
@@ -220,7 +221,7 @@ def run_net(y_labs, y_true):
     session.run(init)
 
     # Ensure we update the global variable rather than a local copy.
-    total_iterations = 101
+    total_iterations = 301
 
     # # call the img_loader
     train_dataset = tf.data.Dataset.from_tensor_slices((x,y_true)).repeat().batch(batch_size)
@@ -249,7 +250,7 @@ def run_net(y_labs, y_true):
                            y_true: y_eval}
 
 
-        session.run([training_op, extra_update], feed_dict=feed_dict_train)
+        session.run(training_op, feed_dict=feed_dict_train)
 
         print("Labels:")
         print(y_eval)
@@ -257,21 +258,21 @@ def run_net(y_labs, y_true):
         print(session.run(logits, feed_dict=feed_dict_train))
 
         # Print status every 5 iterations
-        if i % 5 == 0:
+        if i % 10 == 0:
             # Calculate the accuracy on the training-set
             acc = session.run(accuracy, feed_dict=feed_dict_train)
-
             # Message for printing.
             msg = "Optimization Iteration: " +str(i+1)+", Training Accuracy: " + str(acc)
             print(msg)
+        if i % 50 == 0 and i != 0 and i != 1:
             print("Checkpoint..")
             save_path = saver.save(session, "./temp_voc07_model.ckpt")
-            print("Computer CV Accuracy..")
-            x_eval_cv, y_cv_eval = session.run([x_cv_batch, y_cv_batch])
-            cv_acc = session.run(accuracy, feed_dict={x: x_eval_cv,
-                                                    y_true: y_cv_eval})
-            print("Cross Validation Accuracy: " + str(cv_acc))
-
+            for j in range(50):
+                print(str(j) + ": Computing CV Accuracy..")
+                x_eval_cv, y_cv_eval = session.run([x_cv_batch, y_cv_batch])
+                cv_acc = session.run(accuracy, feed_dict={x: x_eval_cv,
+                                                        y_true: y_cv_eval})
+                print("Cross Validation Accuracy: " + str(cv_acc))
 
     # Ending time
     end_time = time.time()
