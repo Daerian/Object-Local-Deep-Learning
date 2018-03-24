@@ -121,6 +121,7 @@ def run_net(y_labs, y_true):
     # Dense layer
     dl = partial(tf.layers.dense, activation = tf.nn.relu, kernel_initializer=he_init, use_bias=True, name=None)
     training = tf.placeholder_with_default(True, shape=(), name='training')
+    #training = tf.placeholder(tf.bool, name="phase")
     # Batch normalization layer
     bnl = partial(tf.layers.batch_normalization,
             training=training, momentum=0.99, center=True, scale=True)
@@ -181,22 +182,22 @@ def run_net(y_labs, y_true):
     layer_fc1 = dl(layer_flat, fc_size, activation=tf.nn.relu, name="fc1")
     bn6 = bnl(layer_fc1)
     # bn6_act = tf.nn.elu(bn6)
-    weights6 = tf.get_default_graph().get_tensor_by_name(
-        os.path.split(layer_fc1.name)[0] + '/kernel:0')
+    #weights6 = tf.get_default_graph().get_tensor_by_name(
+    #    os.path.split(layer_fc1.name)[0] + '/kernel:0')
 
     layer_fc2 = dl(bn6, fc_size, activation=tf.nn.relu, name="fc2")
     bn7 = bnl(layer_fc2)
     # bn7_act = tf.nn.elu(bn7)
-    weights7 = tf.get_default_graph().get_tensor_by_name(
-        os.path.split(layer_fc2.name)[0] + '/kernel:0')
+    #weights7 = tf.get_default_graph().get_tensor_by_name(
+    #    os.path.split(layer_fc2.name)[0] + '/kernel:0')
 
     outputs = dl(bn7, num_classes, activation=tf.nn.relu, name="outputs")
     pre_logits = bnl(outputs)
-    logits = tf.nn.relu(pre_logits)
-    weights8 = tf.get_default_graph().get_tensor_by_name(
-        os.path.split(outputs.name)[0] + '/kernel:0')
+    logits = tf.nn.softmax(pre_logits)
+    #weights8 = tf.get_default_graph().get_tensor_by_name(
+    #    os.path.split(outputs.name)[0] + '/kernel:0')
 
-    logits = tf.clip_by_value(logits, 0, 1)
+    #logits = tf.clip_by_value(logits, 0, 1)
 
     # Cross entropy cost function
     cross_entropy = tf.nn.softmax_cross_entropy_with_logits_v2(logits=logits,
@@ -249,6 +250,11 @@ def run_net(y_labs, y_true):
 
 
         session.run([training_op, extra_update], feed_dict=feed_dict_train)
+
+        print("Labels:")
+        print(y_eval)
+        print("Logits:")
+        print(session.run(logits, feed_dict=feed_dict_train))
 
         # Print status every 5 iterations
         if i % 5 == 0:
