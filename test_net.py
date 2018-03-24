@@ -231,7 +231,7 @@ def run_net(y_labs, y_true):
     # Object to save our model after training
     saver = tf.train.Saver()
     session.run(it.initializer, feed_dict={x:train, y_true: y_labs})
-    session.run(it_cv, feed_dict={x_cv:cv, y_cv: cv_labels})
+    session.run(it_cv.initializer, feed_dict={x_cv:cv, y_cv: cv_labels})
 
     start_time = time.time()
     # Iteratior object to get every batch in for loop
