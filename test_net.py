@@ -133,42 +133,43 @@ def run_net(y_labs, y_true):
                     use_pooling=True,
                     use_relu=True,
                     use_local_norm=True)
-    bn1 = bnl(inputs=layer_conv1)
-    bn1_act = tf.nn.elu(bn1)
+    #bn1 = bnl(inputs=layer_conv1)
+    #bn1_act = tf.nn.relu(bn1)
 
     layer_conv2, weights_conv2 = \
-        new_conv_layer(input=bn1_act,
+        new_conv_layer(input=layer_conv1,
                     num_input_channels=num_filters1,
                     filter_size=filter_size2,
                     num_filters=num_filters2,
                     use_pooling=True,
                     use_relu=True,
                     use_local_norm=True)
-    bn2 = bnl(inputs=layer_conv2)
-    bn2_act = tf.nn.elu(bn2)
+    #bn2 = bnl(inputs=layer_conv2)
+    #bn2_act = tf.nn.relu(bn2)
 
     layer_conv3, weights_conv3 = \
-            new_conv_layer(input=bn2_act,
+            new_conv_layer(input=layer_conv2,
                 num_input_channels=num_filters2,
                 filter_size=filter_size3,
                 num_filters=num_filters3,
                 use_pooling=False,
                 use_relu=True,
                 use_local_norm=False)
-    conv3_dropped = tf.layers.dropout(layer_conv3, 0.5, training=training)
+    #conv3_dropped = tf.layers.dropout(layer_conv3, 0.5, training=training)
+    #bn3 = bnl(input=layer_conv4
 
     layer_conv4, weights_conv4 = \
-            new_conv_layer(input=conv3_dropped,
+            new_conv_layer(input=layer_conv3,
                 num_input_channels=num_filters3,
                 filter_size=filter_size4,
                 num_filters=num_filters4,
                 use_pooling=False,
                 use_relu=True,
                 use_local_norm=False)
-    conv4_dropped = tf.layers.dropout(layer_conv4, 0.5, training=training)
+    #conv4_dropped = tf.layers.dropout(layer_conv4, 0.5, training=training)
 
     layer_conv5, weights_conv5 = \
-            new_conv_layer(input=conv4_dropped,
+            new_conv_layer(input=layer_conv4,
                 num_input_channels=num_filters4,
                 filter_size=filter_size5,
                 num_filters=num_filters5,
@@ -180,19 +181,19 @@ def run_net(y_labs, y_true):
 
     layer_fc1 = dl(layer_flat, fc_size, activation=None, name="fc1")
     bn6 = bnl(layer_fc1)
-    bn6_act = tf.nn.elu(bn6)
+    bn6_act = tf.nn.relu(bn6)
     fc1_dropped = tf.layers.dropout(bn6_act, 0.5, training=training)
     #weights6 = tf.get_default_graph().get_tensor_by_name(
     #    os.path.split(layer_fc1.name)[0] + '/kernel:0')
 
     layer_fc2 = dl(fc1_dropped, fc_size, activation=None, name="fc2")
     bn7 = bnl(layer_fc2)
-    bn7_act = tf.nn.elu(bn7)
+    bn7_act = tf.nn.relu(bn7)
     fc2_dropped = tf.layers.dropout(bn7_act, 0.5, training=training)
     #weights7 = tf.get_default_graph().get_tensor_by_name(
     #    os.path.split(layer_fc2.name)[0] + '/kernel:0')
 
-    outputs = dl(fc2_dropped, num_classes, activation=None, name="outputs")
+    outputs = dl(fc2_dropped, num_classes, activation=tf.nn.relu, name="outputs")
     pre_logits = bnl(outputs)
     logits = tf.nn.sigmoid(pre_logits)
     #weights8 = tf.get_default_graph().get_tensor_by_name(
@@ -218,7 +219,7 @@ def run_net(y_labs, y_true):
     session.run(init)
 
     # Ensure we update the global variable rather than a local copy.
-    total_iterations = 301
+    total_iterations = 4301
 
     # # call the img_loader
     train_dataset = tf.data.Dataset.from_tensor_slices((x,y_true)).repeat().batch(batch_size)
@@ -258,12 +259,15 @@ def run_net(y_labs, y_true):
         if i % 50 == 0 and i != 0 and i != 1:
             print("Checkpoint..")
             save_path = saver.save(session, "./temp_voc07_model.ckpt")
+            total = 0
             for j in range(50):
                 print(str(j) + ": Computing CV Accuracy..")
                 x_eval_cv, y_cv_eval = session.run([x_cv_batch, y_cv_batch])
                 cv_acc = session.run(accuracy, feed_dict={x: x_eval_cv,
                                                         y_true: y_cv_eval})
                 print("Cross Validation Accuracy: " + str(cv_acc))
+                total += cv_acc
+            print("CV Average: " + str(total/50.0))
 
     # Ending time
     end_time = time.time()
