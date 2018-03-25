@@ -120,8 +120,7 @@ def run_net(y_labs, y_true):
     he_init = tf.contrib.layers.variance_scaling_initializer(factor=1, mode='FAN_AVG', uniform=False)
     # Dense layer
     dl = partial(tf.layers.dense, activation = tf.nn.relu, kernel_initializer=he_init, use_bias=True, name=None)
-    training = tf.placeholder_with_default(True, shape=(), name='training')
-    #training = tf.placeholder(tf.bool, name="phase")
+    training = tf.placeholder_with_default(False, shape=(), name='training')
     # Batch normalization layer
     bnl = partial(tf.layers.batch_normalization,
             training=training, momentum=0.99, center=True, scale=True)
@@ -156,18 +155,20 @@ def run_net(y_labs, y_true):
                 use_pooling=False,
                 use_relu=True,
                 use_local_norm=False)
+    conv3_dropped = tf.layers.dropout(layer_conv3, 0.5, training=training)
 
     layer_conv4, weights_conv4 = \
-            new_conv_layer(input=layer_conv3,
+            new_conv_layer(input=conv3_dropped,
                 num_input_channels=num_filters3,
                 filter_size=filter_size4,
                 num_filters=num_filters4,
                 use_pooling=False,
                 use_relu=True,
                 use_local_norm=False)
+    conv4_dropped = tf.layers.dropout(layer_conv4, 0.5, training=training)
 
     layer_conv5, weights_conv5 = \
-            new_conv_layer(input=layer_conv4,
+            new_conv_layer(input=conv4_dropped,
                 num_input_channels=num_filters4,
                 filter_size=filter_size5,
                 num_filters=num_filters5,
@@ -175,29 +176,27 @@ def run_net(y_labs, y_true):
                 use_relu=True,
                 use_local_norm=False)
 
-
-
     layer_flat, num_features = flatten_layer(layer_conv5)
 
-    layer_fc1 = dl(layer_flat, fc_size, activation=tf.nn.relu, name="fc1")
+    layer_fc1 = dl(layer_flat, fc_size, activation=None, name="fc1")
     bn6 = bnl(layer_fc1)
-    # bn6_act = tf.nn.elu(bn6)
+    bn6_act = tf.nn.elu(bn6)
+    fc1_dropped = tf.layers.dropout(bn6_act, 0.5, training=training)
     #weights6 = tf.get_default_graph().get_tensor_by_name(
     #    os.path.split(layer_fc1.name)[0] + '/kernel:0')
 
-    layer_fc2 = dl(bn6, fc_size, activation=tf.nn.relu, name="fc2")
+    layer_fc2 = dl(fc1_dropped, fc_size, activation=None, name="fc2")
     bn7 = bnl(layer_fc2)
-    # bn7_act = tf.nn.elu(bn7)
+    bn7_act = tf.nn.elu(bn7)
+    fc2_dropped = tf.layers.dropout(bn7_act, 0.5, training=training)
     #weights7 = tf.get_default_graph().get_tensor_by_name(
     #    os.path.split(layer_fc2.name)[0] + '/kernel:0')
 
-    outputs = dl(bn7, num_classes, activation=tf.nn.relu, name="outputs")
+    outputs = dl(fc2_dropped, num_classes, activation=None, name="outputs")
     pre_logits = bnl(outputs)
     logits = tf.nn.sigmoid(pre_logits)
     #weights8 = tf.get_default_graph().get_tensor_by_name(
     #    os.path.split(outputs.name)[0] + '/kernel:0')
-
-    #logits = tf.clip_by_value(logits, 0, 1)
 
     # Cross entropy cost function
     cross_entropy = tf.nn.sigmoid_cross_entropy_with_logits(logits=logits,
@@ -206,11 +205,9 @@ def run_net(y_labs, y_true):
     # We will be using momemtum descent with nesterov optimizationaa
     optimizer = tf.train.MomentumOptimizer(learning_rate=0.01,momentum=0.9, use_nesterov=True)
     # Operations needed to run every iteration
-    #training_op = optimizer.minimize(loss)
     # Needed to deal with batch normalization operations
     extra_update = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-    with tf.control_dependencies(extra_update):
-        training_op = optimizer.minimize(loss)
+    training_op = optimizer.minimize(loss)
     # Calculate accuracy; since logits is a float, it will round to 0 or 1 and then cast to int
     # for comparisons
     correct_prediction = tf.equal(tf.cast(tf.round(logits), tf.int64), y_true)
@@ -246,16 +243,10 @@ def run_net(y_labs, y_true):
 
         X_eval, y_eval = session.run([x_batch, y_true_batch])
 
-        feed_dict_train = {x: X_eval,
+        feed_dict_train = {training: True, x: X_eval,
                            y_true: y_eval}
 
-
-        session.run(training_op, feed_dict=feed_dict_train)
-
-        print("Labels:")
-        print(y_eval)
-        print("Logits:")
-        print(session.run(logits, feed_dict=feed_dict_train))
+        session.run([training_op, extra_update], feed_dict=feed_dict_train)
 
         # Print status every 5 iterations
         if i % 10 == 0:
