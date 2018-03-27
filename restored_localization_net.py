@@ -5,7 +5,7 @@ from datetime import timedelta
 import os
 from PIL import Image
 from PIL import ImageFilter
-import scipy.misc
+import scipy.misc as sm
 
 img_size = 227
 
@@ -26,7 +26,7 @@ def main(unused_args):
     # Get first image
     # filename = image_names[0].split(' ')[0] + '.jpg'
 
-    image_loc = path + "/000012.jpg"
+    image_loc = path + "/000033.jpg"
     # Open image
     image = Image.open(image_loc)
 
@@ -38,26 +38,20 @@ def main(unused_args):
     else:
         resize_num = image_size[0]
 
+    # saver = tf.train.Saver()
     saver = tf.train.import_meta_graph("./275_voc07_model.ckpt.meta")
     with tf.Session() as sess:
         # Open our saved graph
         saver.restore(sess, "./275_voc07_model.ckpt")
 
-        variables = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES)
+        graph = tf.get_default_graph()
 
-        # print(variables[0])
-
-        # x = tf.placeholder(tf.float32, shape=[None, img_size,img_size,num_channels], name='x')
-        # x = tf.get_collection("x")
-        # x = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, "x")
-        # x = tf.get_variable("x")
-        #x = sess.run(x)
-        # variables = tf.global_variables()
-
-        # print(variables)
-
-        outputs = tf.get_collection("outputs")
-        print(outputs)
+        # for n in graph.as_graph_def().node:
+        #     print(n.name)
+        x = graph.get_tensor_by_name("x:0")
+        # print(x)
+        outputs = graph.get_tensor_by_name("outputs/Relu:0")
+        # print(outputs)
 
         # Crop image
         t = tf.image.resize_image_with_crop_or_pad(image, resize_num, resize_num)
@@ -76,8 +70,9 @@ def main(unused_args):
         print("Finished pre-processing image")
 
         pre_proc_im = nn_im.eval()
+        sm.imsave("./pre_proc_im.jpg", pre_proc_im[0])
 
-        pred = sess.run(outputs, feed_dict={x: pre_proc_im})
+        pred = sess.run(x, feed_dict={x: pre_proc_im})
 
         print(pred)
 
