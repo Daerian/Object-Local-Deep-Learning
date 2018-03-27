@@ -43,6 +43,11 @@ num_channels = 3
 # Number of classes, one class for each of 10 digits.
 num_classes = 20
 
+training = tf.placeholder_with_default(False, shape=(), name='training')
+# Batch normalization layer
+bnl = partial(tf.layers.batch_normalization,
+        training=training, momentum=0.99, center=True, scale=True)
+
 
 def new_weights(shape):
     return tf.Variable(tf.truncated_normal(shape, stddev=np.sqrt(2) * np.sqrt(2.0 / (shape[2]+shape[3]))))
@@ -57,7 +62,8 @@ def new_conv_layer(input,              # The previous layer
                    use_pooling=True,   # Use 2x2 max-pooling
                    padding=['SAME', 'VALID'], # Type of padding for conv/pooling respectively
                    use_relu=False, # Should we ReLU after convolution layer
-                   use_local_norm=False): # should we use local resp. norm. for convolution layer
+                   use_local_norm=False, # should we use local resp. norm. for convolution layer
+                   dropout_rate=0.0): # Use dropout if dropout_rate > 0
 
     shape = [filter_size, filter_size, num_input_channels, num_filters]
 
@@ -80,6 +86,9 @@ def new_conv_layer(input,              # The previous layer
         alpha=0.00002,
         beta=0.75)
 
+    if dropout_rate != 0.0:
+        layer = tf.layers.dropout(layer, dropout_rate, training=training)
+
     if use_relu:
         layer = tf.nn.relu(layer)
 
@@ -101,8 +110,11 @@ def flatten_layer(layer):
 
     return layer_flat, num_features
 
-batch_size = 50
+batch_size = 100
+total_train_batches = 25
 batch_size_cv = 250
+total_cv_batchs = 10
+scale = 0.0005
 
 x = tf.placeholder(tf.float32, shape=[None, img_size,img_size,num_channels], name='x')
 x_image = tf.reshape(x, [-1, img_size, img_size, num_channels])
@@ -119,11 +131,11 @@ def run_net(y_labs, y_true):
     # He initialization for weights to help avoid vanishing/exploding
     he_init = tf.contrib.layers.variance_scaling_initializer(factor=1, mode='FAN_AVG', uniform=False)
     # Dense layer
-    dl = partial(tf.layers.dense, activation = tf.nn.relu, kernel_initializer=he_init, use_bias=True, name=None)
-    training = tf.placeholder_with_default(False, shape=(), name='training')
-    # Batch normalization layer
-    bnl = partial(tf.layers.batch_normalization,
-            training=training, momentum=0.99, center=True, scale=True)
+    dl = partial(tf.layers.dense, activation = tf.nn.relu, kernel_regularizer=tf.contrib.layers.l1_regularizer(scale),
+                kernel_initializer=he_init, use_bias=True, name=None)
+
+    # Apply dropout to input layer
+    # X_drop = tf.layers.dropout(X, 0.15, training=training)
 
     layer_conv1, weights_conv1 = \
         new_conv_layer(input=x_image,
@@ -133,8 +145,6 @@ def run_net(y_labs, y_true):
                     use_pooling=True,
                     use_relu=True,
                     use_local_norm=True)
-    #bn1 = bnl(inputs=layer_conv1)
-    #bn1_act = tf.nn.relu(bn1)
 
     layer_conv2, weights_conv2 = \
         new_conv_layer(input=layer_conv1,
@@ -144,8 +154,6 @@ def run_net(y_labs, y_true):
                     use_pooling=True,
                     use_relu=True,
                     use_local_norm=True)
-    #bn2 = bnl(inputs=layer_conv2)
-    #bn2_act = tf.nn.relu(bn2)
 
     layer_conv3, weights_conv3 = \
             new_conv_layer(input=layer_conv2,
@@ -154,22 +162,23 @@ def run_net(y_labs, y_true):
                 num_filters=num_filters3,
                 use_pooling=False,
                 use_relu=True,
-                use_local_norm=False)
-    #conv3_dropped = tf.layers.dropout(layer_conv3, 0.5, training=training)
-    #bn3 = bnl(input=layer_conv4
+                use_local_norm=False,
+                dropout_rate=0.10)
+    bn3 = bnl(layer_conv3)
 
     layer_conv4, weights_conv4 = \
-            new_conv_layer(input=layer_conv3,
+            new_conv_layer(input=bn3,
                 num_input_channels=num_filters3,
                 filter_size=filter_size4,
                 num_filters=num_filters4,
                 use_pooling=False,
                 use_relu=True,
-                use_local_norm=False)
-    #conv4_dropped = tf.layers.dropout(layer_conv4, 0.5, training=training)
+                use_local_norm=False,
+                dropout_rate=0.10)
+    bn4 = bnl(layer_conv4)
 
     layer_conv5, weights_conv5 = \
-            new_conv_layer(input=layer_conv4,
+            new_conv_layer(input=bn4,
                 num_input_channels=num_filters4,
                 filter_size=filter_size5,
                 num_filters=num_filters5,
@@ -183,28 +192,29 @@ def run_net(y_labs, y_true):
     bn6 = bnl(layer_fc1)
     bn6_act = tf.nn.relu(bn6)
     fc1_dropped = tf.layers.dropout(bn6_act, 0.5, training=training)
-    #weights6 = tf.get_default_graph().get_tensor_by_name(
-    #    os.path.split(layer_fc1.name)[0] + '/kernel:0')
 
     layer_fc2 = dl(fc1_dropped, fc_size, activation=None, name="fc2")
     bn7 = bnl(layer_fc2)
     bn7_act = tf.nn.relu(bn7)
     fc2_dropped = tf.layers.dropout(bn7_act, 0.5, training=training)
-    #weights7 = tf.get_default_graph().get_tensor_by_name(
-    #    os.path.split(layer_fc2.name)[0] + '/kernel:0')
 
     outputs = dl(fc2_dropped, num_classes, activation=tf.nn.relu, name="outputs")
     pre_logits = bnl(outputs)
     logits = tf.nn.sigmoid(pre_logits)
-    #weights8 = tf.get_default_graph().get_tensor_by_name(
-    #    os.path.split(outputs.name)[0] + '/kernel:0')
 
     # Cross entropy cost function
     cross_entropy = tf.nn.sigmoid_cross_entropy_with_logits(logits=logits,
                                                             labels=tf.cast(tf.reshape(y_true, [batch_size, num_classes]), tf.float32))
-    loss = tf.reduce_mean(cross_entropy)
+    # get loss including regularization
+    base_loss = tf.reduce_mean(cross_entropy)
+    reg_losses = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
+    loss = tf.add_n([base_loss] + reg_losses, name="loss")
+
     # We will be using momemtum descent with nesterov optimizationaa
-    optimizer = tf.train.MomentumOptimizer(learning_rate=0.01,momentum=0.9, use_nesterov=True)
+    # optimizer = tf.train.MomentumOptimizer(learning_rate=0.01,momentum=0.9, use_nesterov=True)
+    # Switching to Adam optimization
+    optimizer = tf.train.AdamOptimizer(learning_rate=0.01, name="optimizer")
+
     # Operations needed to run every iteration
     # Needed to deal with batch normalization operations
     extra_update = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
@@ -219,12 +229,12 @@ def run_net(y_labs, y_true):
     session.run(init)
 
     # Ensure we update the global variable rather than a local copy.
-    total_iterations = 4301
+    total_iterations = 301
 
-    # # call the img_loader
+    # Put the datasets into Tensorflow's Dataset object
     train_dataset = tf.data.Dataset.from_tensor_slices((x,y_true)).repeat().batch(batch_size)
-    cv_dataset = tf.data.Dataset.from_tensor_slices((x_cv_im,y_cv)).repeat().batch(batch_size)
-    #Iterator
+    cv_dataset = tf.data.Dataset.from_tensor_slices((x_cv_im,y_cv)).repeat().batch(batch_size_cv)
+    # Iterator for Datasets
     it = train_dataset.make_initializable_iterator()
     it_cv = cv_dataset.make_initializable_iterator()
 
@@ -239,7 +249,6 @@ def run_net(y_labs, y_true):
     x_cv_batch, y_cv_batch = it_cv.get_next()
 
     for i in range(total_iterations):
-                   #total_iterations + num_iterations):
         print("iteration: " + str(i))
 
         X_eval, y_eval = session.run([x_batch, y_true_batch])
@@ -250,24 +259,24 @@ def run_net(y_labs, y_true):
         session.run([training_op, extra_update], feed_dict=feed_dict_train)
 
         # Print status every 5 iterations
-        if i % 10 == 0:
+        if i % 5 == 0:
             # Calculate the accuracy on the training-set
             acc = session.run(accuracy, feed_dict=feed_dict_train)
-            # Message for printing.
             msg = "Optimization Iteration: " +str(i+1)+", Training Accuracy: " + str(acc)
             print(msg)
-        if i % 50 == 0 and i != 0 and i != 1:
+
+        if i % total_train_batches == 0 and i != 0:
             print("Checkpoint..")
-            save_path = saver.save(session, "./temp_voc07_model.ckpt")
+            save_path = saver.save(session, "./" + str(i) +  "_voc07_model.ckpt")
             total = 0
-            for j in range(50):
+            for j in range(total_cv_batchs):
                 print(str(j) + ": Computing CV Accuracy..")
                 x_eval_cv, y_cv_eval = session.run([x_cv_batch, y_cv_batch])
                 cv_acc = session.run(accuracy, feed_dict={x: x_eval_cv,
                                                         y_true: y_cv_eval})
                 print("Cross Validation Accuracy: " + str(cv_acc))
                 total += cv_acc
-            print("CV Average: " + str(total/50.0))
+            print("CV Average: " + str(total/float(total_cv_batchs)))
 
     # Ending time
     end_time = time.time()
