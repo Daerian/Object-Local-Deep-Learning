@@ -38,7 +38,7 @@ def main(unused_arg):
             resize_num = image_size[0]
 
 
-        # Pad image
+        # Crop image
         t = tf.image.resize_image_with_crop_or_pad(image, resize_num, resize_num)
         cropped = t.eval()
 
