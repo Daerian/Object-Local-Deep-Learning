@@ -1,0 +1,2 @@
+model_checkpoint_path: "voc07_model.ckpt"
+all_model_checkpoint_paths: "275_voc07_model.ckpt"
