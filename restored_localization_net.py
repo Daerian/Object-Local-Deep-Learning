@@ -26,7 +26,7 @@ def main(unused_args):
     # Get first image
     # filename = image_names[0].split(' ')[0] + '.jpg'
 
-    image_loc = path + "/000033.jpg"
+    image_loc = path + "/000113.jpg"
     # Open image
     image = Image.open(image_loc)
 
@@ -46,12 +46,8 @@ def main(unused_args):
 
         graph = tf.get_default_graph()
 
-        # for n in graph.as_graph_def().node:
-        #     print(n.name)
         x = graph.get_tensor_by_name("x:0")
-        # print(x)
         outputs = graph.get_tensor_by_name("outputs/Relu:0")
-        # print(outputs)
 
         # Crop image
         t = tf.image.resize_image_with_crop_or_pad(image, resize_num, resize_num)
@@ -72,9 +68,9 @@ def main(unused_args):
         pre_proc_im = nn_im.eval()
         sm.imsave("./pre_proc_im.jpg", pre_proc_im[0])
 
-        pred = sess.run(x, feed_dict={x: pre_proc_im})
+        pred = sess.run(outputs, feed_dict={x: pre_proc_im})
 
-        print(pred)
+        print(tf.nn.sigmoid(pred).eval())
 
 if __name__ == '__main__':
     tf.app.run(main=main)

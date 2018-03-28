@@ -27,7 +27,7 @@ filter_size5 = 5
 num_filters5 = 256
 
 # Fully-connected layer
-fc_size = 1000
+fc_size = 2048
 
 
 train = np.load("./VOC_data/voc07_train_only_blurred_nn_cropped.npy")
@@ -112,8 +112,8 @@ def flatten_layer(layer):
 
 batch_size = 100
 total_train_batches = 25
-batch_size_cv = 250
-total_cv_batchs = 10
+batch_size_cv = 100
+total_cv_batchs = 25
 scale = 0.0005
 
 x = tf.placeholder(tf.float32, shape=[None, img_size,img_size,num_channels], name='x')
@@ -198,9 +198,9 @@ def run_net(y_labs, y_true):
     bn7_act = tf.nn.relu(bn7)
     fc2_dropped = tf.layers.dropout(bn7_act, 0.5, training=training)
 
-    outputs = dl(fc2_dropped, num_classes, activation=tf.nn.relu, name="outputs")
-    pre_logits = bnl(outputs)
-    logits = tf.nn.sigmoid(pre_logits)
+    pre_logits = dl(fc2_dropped, num_classes, activation=None, name="outputs")
+    logits = bnl(pre_logits)
+    outputs = tf.nn.sigmoid(logits)
 
     # Cross entropy cost function
     cross_entropy = tf.nn.sigmoid_cross_entropy_with_logits(logits=logits,
@@ -221,7 +221,7 @@ def run_net(y_labs, y_true):
     training_op = optimizer.minimize(loss)
     # Calculate accuracy; since logits is a float, it will round to 0 or 1 and then cast to int
     # for comparisons
-    correct_prediction = tf.equal(tf.cast(tf.round(logits), tf.int64), y_true)
+    correct_prediction = tf.equal(tf.cast(tf.round(outputs), tf.int64), y_true)
     accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
     session = tf.Session()
@@ -258,6 +258,7 @@ def run_net(y_labs, y_true):
 
         session.run([training_op, extra_update], feed_dict=feed_dict_train)
 
+
         # Print status every 5 iterations
         if i % 5 == 0:
             # Calculate the accuracy on the training-set
@@ -267,7 +268,7 @@ def run_net(y_labs, y_true):
 
         if i % total_train_batches == 0 and i != 0:
             print("Checkpoint..")
-            save_path = saver.save(session, "./" + str(i) +  "_voc07_model.ckpt")
+            save_path = saver.save(session, "./" + str(i) +  "_voc07_model_2.ckpt")
             total = 0
             for j in range(total_cv_batchs):
                 print(str(j) + ": Computing CV Accuracy..")
@@ -280,7 +281,7 @@ def run_net(y_labs, y_true):
 
     # Ending time
     end_time = time.time()
-    save_path = saver.save(session, "./voc07_model.ckpt")
+    save_path = saver.save(session, "./voc07_model_2.ckpt")
     # Difference between start and end-times
     time_dif = end_time - start_time
 
