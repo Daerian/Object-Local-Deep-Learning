@@ -26,7 +26,7 @@ def main(unused_args):
     # Get first image
     # filename = image_names[0].split(' ')[0] + '.jpg'
 
-    image_loc = path + "/000113.jpg"
+    image_loc = path + "/000012.jpg"
     # Open image
     image = Image.open(image_loc)
 
@@ -39,15 +39,20 @@ def main(unused_args):
         resize_num = image_size[0]
 
     # saver = tf.train.Saver()
-    saver = tf.train.import_meta_graph("./275_voc07_model.ckpt.meta")
+    saver = tf.train.import_meta_graph("./275_voc07_model_2.ckpt.meta")
     with tf.Session() as sess:
         # Open our saved graph
-        saver.restore(sess, "./275_voc07_model.ckpt")
+        saver.restore(sess, "./275_voc07_model_2.ckpt")
 
         graph = tf.get_default_graph()
 
         x = graph.get_tensor_by_name("x:0")
-        outputs = graph.get_tensor_by_name("outputs/Relu:0")
+        outputs = graph.get_tensor_by_name("outputs/kernel:0")
+        # W = graph.get_tensor_by_name("outputs/kernel:0")
+        # W = graph.get_tensor_by_name("outputs/MatMul")
+        b = graph.get_tensor_by_name("outputs/bias:0")
+        # print(b.eval())
+        # outputs = tf.add(W, b)
 
         # Crop image
         t = tf.image.resize_image_with_crop_or_pad(image, resize_num, resize_num)
@@ -68,9 +73,9 @@ def main(unused_args):
         pre_proc_im = nn_im.eval()
         sm.imsave("./pre_proc_im.jpg", pre_proc_im[0])
 
-        pred = sess.run(outputs, feed_dict={x: pre_proc_im})
+        pred = sess.run(outputs+b, feed_dict={x: pre_proc_im})
 
-        print(tf.nn.sigmoid(pred).eval())
+        print(pred)
 
 if __name__ == '__main__':
     tf.app.run(main=main)

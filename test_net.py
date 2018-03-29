@@ -5,6 +5,9 @@ from datetime import timedelta
 from tensorflow.examples.tutorials.mnist import input_data
 from functools import partial
 import os
+from PIL import Image
+from PIL import ImageFilter
+import scipy.misc as sm
 
 # Convolutional Layer 1
 filter_size1 = 5
@@ -127,7 +130,7 @@ y_cv = tf.placeholder(tf.int64, shape=(None), name='y_cv')
 def l_relu(z, name=None):
     return tf.maximum(0.01 * z, z, name=name)
 
-def run_net(y_labs, y_true):
+def run_net(y_labs, y_true, restore):
     # He initialization for weights to help avoid vanishing/exploding
     he_init = tf.contrib.layers.variance_scaling_initializer(factor=1, mode='FAN_AVG', uniform=False)
     # Dense layer
@@ -200,7 +203,7 @@ def run_net(y_labs, y_true):
 
     pre_logits = dl(fc2_dropped, num_classes, activation=None, name="outputs")
     logits = bnl(pre_logits)
-    outputs = tf.nn.sigmoid(logits)
+    outputs = tf.nn.sigmoid(logits, name="final_activation")
 
     # Cross entropy cost function
     cross_entropy = tf.nn.sigmoid_cross_entropy_with_logits(logits=logits,
@@ -225,74 +228,127 @@ def run_net(y_labs, y_true):
     accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
     session = tf.Session()
-    init = tf.global_variables_initializer()
-    session.run(init)
-
-    # Ensure we update the global variable rather than a local copy.
-    total_iterations = 301
-
-    # Put the datasets into Tensorflow's Dataset object
-    train_dataset = tf.data.Dataset.from_tensor_slices((x,y_true)).repeat().batch(batch_size)
-    cv_dataset = tf.data.Dataset.from_tensor_slices((x_cv_im,y_cv)).repeat().batch(batch_size_cv)
-    # Iterator for Datasets
-    it = train_dataset.make_initializable_iterator()
-    it_cv = cv_dataset.make_initializable_iterator()
-
     # Object to save our model after training
     saver = tf.train.Saver()
-    session.run(it.initializer, feed_dict={x:train, y_true: y_labs})
-    session.run(it_cv.initializer, feed_dict={x_cv:cv, y_cv: cv_labels})
+    # print(restore)
+    restore = int(restore[1])
+    if restore == 1:
+        # path = "./datasets/VOC_2007/traindata/VOC2007/JPEGImages/"
+        # gaussian_blur = 1
+        # nn_size = 227
 
-    start_time = time.time()
-    # Iteratior object to get every batch in for loop
-    x_batch, y_true_batch = it.get_next()
-    x_cv_batch, y_cv_batch = it_cv.get_next()
+        # image_loc = path + "/000036.jpg"
+        # # Open image
+        # image = Image.open(image_loc)
 
-    for i in range(total_iterations):
-        print("iteration: " + str(i))
+        # image_size = image.size
+        # resize_num = 500
+        # if (image_size[0] > image_size[1]):
+        #     resize_num = image_size[1]
+        # else:
+        #     resize_num = image_size[0]
 
-        X_eval, y_eval = session.run([x_batch, y_true_batch])
+        saver.restore(session, "./275_voc07_model_2.ckpt")
 
-        feed_dict_train = {training: True, x: X_eval,
-                           y_true: y_eval}
+        # # Crop image
+        # t = tf.image.resize_image_with_crop_or_pad(image, resize_num, resize_num)
+        # cropped = session.run(t)
 
-        session.run([training_op, extra_update], feed_dict=feed_dict_train)
+        # # Convert from numpy to PIL image
+        # pil_cropped_image = Image.fromarray(cropped)
+
+        # # Blur image
+        # blurred = pil_cropped_image.filter(ImageFilter.GaussianBlur(gaussian_blur))
+
+        # # Apply nearest neighbour interpolation
+        # p = tf.convert_to_tensor(blurred)
+        # nn_im = tf.image.resize_nearest_neighbor([p],
+        #     (nn_size, nn_size))
+        # print("Finished pre-processing image")
+
+        # pre_proc_im = session.run(nn_im)
+        # sm.imsave("./pre_proc_im.jpg", pre_proc_im[0])
+
+        cv_im = 23
+        pre_proc_im = cv[cv_im,:]
+        label_true = cv_labels[cv_im,:]
+        sm.imsave("./pre_proc_im.jpg", pre_proc_im)
+        
+        computed_logits = session.run(pre_logits, feed_dict={x: [pre_proc_im]})
+        y_pred = session.run(tf.cast(tf.round(tf.nn.sigmoid(computed_logits)), tf.int64))
+        y_pred_probs = session.run(tf.nn.sigmoid(computed_logits))
+        print("True labels:")
+        print(label_true)
+        print("Prediction:")
+        print(y_pred)
+        print(y_pred_probs)
+    else:
+        init = tf.global_variables_initializer()
+        session.run(init)
+
+        # Ensure we update the global variable rather than a local copy.
+        total_iterations = 301
+
+        # Put the datasets into Tensorflow's Dataset object
+        train_dataset = tf.data.Dataset.from_tensor_slices((x,y_true)).repeat().batch(batch_size)
+        cv_dataset = tf.data.Dataset.from_tensor_slices((x_cv_im,y_cv)).repeat().batch(batch_size_cv)
+        # Iterator for Datasets
+        it = train_dataset.make_initializable_iterator()
+        it_cv = cv_dataset.make_initializable_iterator()
+
+        session.run(it.initializer, feed_dict={x:train, y_true: y_labs})
+        session.run(it_cv.initializer, feed_dict={x_cv:cv, y_cv: cv_labels})
+
+        start_time = time.time()
+        # Iteratior object to get every batch in for loop
+        x_batch, y_true_batch = it.get_next()
+        x_cv_batch, y_cv_batch = it_cv.get_next()
+
+        for i in range(total_iterations):
+            print("iteration: " + str(i))
+
+            X_eval, y_eval = session.run([x_batch, y_true_batch])
+
+            feed_dict_train = {training: True, x: X_eval,
+                            y_true: y_eval}
+
+            session.run([training_op, extra_update], feed_dict=feed_dict_train)
 
 
-        # Print status every 5 iterations
-        if i % 5 == 0:
-            # Calculate the accuracy on the training-set
-            acc = session.run(accuracy, feed_dict=feed_dict_train)
-            msg = "Optimization Iteration: " +str(i+1)+", Training Accuracy: " + str(acc)
-            print(msg)
+            # Print status every 5 iterations
+            if i % 5 == 0:
+                # Calculate the accuracy on the training-set
+                acc = session.run(accuracy, feed_dict=feed_dict_train)
+                msg = "Optimization Iteration: " +str(i+1)+", Training Accuracy: " + str(acc)
+                print(msg)
 
-        if i % total_train_batches == 0 and i != 0:
-            print("Checkpoint..")
-            save_path = saver.save(session, "./" + str(i) +  "_voc07_model_2.ckpt")
-            total = 0
-            for j in range(total_cv_batchs):
-                print(str(j) + ": Computing CV Accuracy..")
-                x_eval_cv, y_cv_eval = session.run([x_cv_batch, y_cv_batch])
-                cv_acc = session.run(accuracy, feed_dict={x: x_eval_cv,
-                                                        y_true: y_cv_eval})
-                print("Cross Validation Accuracy: " + str(cv_acc))
-                total += cv_acc
-            print("CV Average: " + str(total/float(total_cv_batchs)))
+            if i % total_train_batches == 0 and i != 0:
+                print("Checkpoint..")
+                save_path = saver.save(session, "./" + str(i) +  "_voc07_model_2.ckpt")
+                total = 0
+                for j in range(total_cv_batchs):
+                    print(str(j) + ": Computing CV Accuracy..")
+                    x_eval_cv, y_cv_eval = session.run([x_cv_batch, y_cv_batch])
+                    cv_acc = session.run(accuracy, feed_dict={x: x_eval_cv,
+                                                            y_true: y_cv_eval})
+                    print("Cross Validation Accuracy: " + str(cv_acc))
+                    total += cv_acc
+                print("CV Average: " + str(total/float(total_cv_batchs)))
 
-    # Ending time
-    end_time = time.time()
-    save_path = saver.save(session, "./voc07_model_2.ckpt")
-    # Difference between start and end-times
-    time_dif = end_time - start_time
+        # Ending time
+        end_time = time.time()
+        save_path = saver.save(session, "./voc07_model_2.ckpt")
+        # Difference between start and end-times
+        time_dif = end_time - start_time
 
-    # Print the time-usage.
-    print("Time usage: " + str(timedelta(seconds=int(round(time_dif)))))
+        # Print the time-usage.
+        print("Time usage: " + str(timedelta(seconds=int(round(time_dif)))))
     session.close()
 
 
-def main(unused_arg):
+def main(if_restore=1):
     c0 = train_labels
-    w0 = run_net(c0, y0)
+    w0 = run_net(c0, y0, restore=if_restore)
 
 if __name__ == '__main__':
     tf.app.run(main=main)
