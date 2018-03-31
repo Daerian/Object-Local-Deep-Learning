@@ -166,7 +166,7 @@ def run_net(y_labs, y_true, restore):
                 use_pooling=False,
                 use_relu=True,
                 use_local_norm=False,
-                dropout_rate=0.10)
+                dropout_rate=0.0)
     bn3 = bnl(layer_conv3)
 
     layer_conv4, weights_conv4 = \
@@ -177,7 +177,7 @@ def run_net(y_labs, y_true, restore):
                 use_pooling=False,
                 use_relu=True,
                 use_local_norm=False,
-                dropout_rate=0.10)
+                dropout_rate=0.0)
     bn4 = bnl(layer_conv4)
 
     layer_conv5, weights_conv5 = \
@@ -201,8 +201,8 @@ def run_net(y_labs, y_true, restore):
     bn7_act = tf.nn.relu(bn7)
     fc2_dropped = tf.layers.dropout(bn7_act, 0.5, training=training)
 
-    pre_logits = dl(fc2_dropped, num_classes, activation=None, name="outputs")
-    logits = bnl(pre_logits)
+    logits = dl(fc2_dropped, num_classes, activation=None, name="outputs")
+    # logits = bnl(pre_logits)
     outputs = tf.nn.sigmoid(logits, name="final_activation")
 
     # Cross entropy cost function
@@ -216,7 +216,7 @@ def run_net(y_labs, y_true, restore):
     # We will be using momemtum descent with nesterov optimizationaa
     # optimizer = tf.train.MomentumOptimizer(learning_rate=0.01,momentum=0.9, use_nesterov=True)
     # Switching to Adam optimization
-    optimizer = tf.train.AdamOptimizer(learning_rate=0.01, name="optimizer")
+    optimizer = tf.train.AdamOptimizer(learning_rate=0.001, name="optimizer")
 
     # Operations needed to run every iteration
     # Needed to deal with batch normalization operations
@@ -248,7 +248,7 @@ def run_net(y_labs, y_true, restore):
         # else:
         #     resize_num = image_size[0]
 
-        saver.restore(session, "./275_voc07_model_2.ckpt")
+        saver.restore(session, "./100_voc07_model_3.ckpt")
 
         # # Crop image
         # t = tf.image.resize_image_with_crop_or_pad(image, resize_num, resize_num)
@@ -269,19 +269,34 @@ def run_net(y_labs, y_true, restore):
         # pre_proc_im = session.run(nn_im)
         # sm.imsave("./pre_proc_im.jpg", pre_proc_im[0])
 
-        cv_im = 23
-        pre_proc_im = cv[cv_im,:]
-        label_true = cv_labels[cv_im,:]
-        sm.imsave("./pre_proc_im.jpg", pre_proc_im)
+        # cv_im = 101
+        local_cand = 0
+        for cv_im in range(2510):
+            pre_proc_im = cv[cv_im,:]
+            label_true = cv_labels[cv_im,:]
+            sm.imsave("./pre_proc_im.jpg", pre_proc_im)
+            
+            computed_logits = session.run(logits, feed_dict={x: [pre_proc_im]})
+            print(computed_logits)
+            # y_class = tf.nn.sigmoid(computed_logits)
+            y_class = session.run(tf.nn.softmax(computed_logits))
+            max_cls = np.argmax(y_class)
+            print(max_cls)
+            y_class = np.zeros(shape=(1, 20))
+            y_class[0,max_cls] = 1
+            # y_pred = session.run(tf.cast(tf.round(y_class), tf.int64))
+            # y_pred_probs = session.run(y_class)
+            print("True labels:")
+            print(label_true)
+            print("Prediction:")
+            print(y_class)
+            # print(y_pred_probs)
+            # print()
+            if np.sum((y_class == 1) == (label_true == 1)) == 20:
+                print(cv_im)
+                local_cand = cv_im
+                break
         
-        computed_logits = session.run(pre_logits, feed_dict={x: [pre_proc_im]})
-        y_pred = session.run(tf.cast(tf.round(tf.nn.sigmoid(computed_logits)), tf.int64))
-        y_pred_probs = session.run(tf.nn.sigmoid(computed_logits))
-        print("True labels:")
-        print(label_true)
-        print("Prediction:")
-        print(y_pred)
-        print(y_pred_probs)
     else:
         init = tf.global_variables_initializer()
         session.run(init)
@@ -314,7 +329,10 @@ def run_net(y_labs, y_true, restore):
 
             session.run([training_op, extra_update], feed_dict=feed_dict_train)
 
-
+            print("Labels:")
+            print(y_eval[0:20,:])
+            print("Logits:")
+            print(session.run(logits, feed_dict={x: X_eval[0:20,:], y_true: y_eval[0:20,:]}))
             # Print status every 5 iterations
             if i % 5 == 0:
                 # Calculate the accuracy on the training-set
@@ -324,7 +342,7 @@ def run_net(y_labs, y_true, restore):
 
             if i % total_train_batches == 0 and i != 0:
                 print("Checkpoint..")
-                save_path = saver.save(session, "./" + str(i) +  "_voc07_model_2.ckpt")
+                save_path = saver.save(session, "./" + str(i) +  "_voc07_model_3.ckpt")
                 total = 0
                 for j in range(total_cv_batchs):
                     print(str(j) + ": Computing CV Accuracy..")
@@ -337,7 +355,7 @@ def run_net(y_labs, y_true, restore):
 
         # Ending time
         end_time = time.time()
-        save_path = saver.save(session, "./voc07_model_2.ckpt")
+        save_path = saver.save(session, "./voc07_model_3.ckpt")
         # Difference between start and end-times
         time_dif = end_time - start_time
 
@@ -346,7 +364,7 @@ def run_net(y_labs, y_true, restore):
     session.close()
 
 
-def main(if_restore=1):
+def main(if_restore=0):
     c0 = train_labels
     w0 = run_net(c0, y0, restore=if_restore)
 
