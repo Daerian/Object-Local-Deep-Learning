@@ -136,100 +136,129 @@ def localize(session, cls, img, itters, beam_width, logits):
     
         max_loc_itters = itters
         pre_proc_im = img
-        comp_logits = session.run(logits, feed_dict={x: [pre_proc_im]})
-        y_class = session.run(tf.nn.softmax(comp_logits))
-        fmax = y_class[0, 0]
 
         cands = Queue()
         cands.put(pre_proc_im)
-        i = 0
         CLASS = cls
+
+        i = 0 #itteration number
+
         while cands.empty() == False and i < max_loc_itters:
-            print(i)
-            i += 1
-            
-            candidate = np.asarray(cands.get())
-            print(candidate.shape)
 
-            
-            candidatep = session.run(tf.image.resize_image_with_crop_or_pad(candidate,227,227))
-            comp_logits = session.run(logits, feed_dict={x: [candidatep]})
-            y_class = session.run(tf.nn.softmax(comp_logits))
-            prob_y_class = y_class[0, CLASS]
-            
-            sh = candidate.shape
-            rows = sh[0]
-            cols = sh[1]
+            k = 0 # current beam number
+            while k < beam_width:
+                if i == 0 :
+                    k = beam_width
 
-            c1 = np.delete(candidate, 0, axis=0)
-            c1p = session.run(tf.image.resize_image_with_crop_or_pad(c1,227,227))
-            c2 = np.delete(candidate, (rows-1), axis=0)
-            c2p = session.run(tf.image.resize_image_with_crop_or_pad(c2,227,227))
-            c3 = np.delete(candidate, 0, axis=1)
-            c3p = session.run(tf.image.resize_image_with_crop_or_pad(c3,227,227))
-            c4 = np.delete(candidate, (cols-1), axis=1)
-            c4p = session.run(tf.image.resize_image_with_crop_or_pad(c4,227,227))
-            
+                i += 1
+                print("Attempt: " + str(i)) 
+
+                candidate = np.asarray(cands.get())
+                print("First Beam has found object of shape:")
+                print(candidate.shape)
+
+                candidate2 = np.asarray(cands.get())
+                print("Second Beam has found object of shape:")
+                print(candidate2.shape)
 
 
 
+                
+                candidatep = session.run(tf.image.resize_image_with_crop_or_pad(candidate,227,227))
+                comp_logits = session.run(logits, feed_dict={x: [candidatep]})
+                y_class = session.run(tf.nn.softmax(comp_logits))
+                prob_y_class = y_class[0, CLASS]
+                
+                sh = candidate.shape
+                rows = sh[0]
+                cols = sh[1]
 
-            top = np.zeros(shape = [1,4])
-            # top[0,0] = prob_y_class
-            
-            cl = session.run(logits, feed_dict={x: [c1p]})
-            score = session.run(tf.nn.softmax(cl))
-            score = score[0, CLASS]
-            top[0,0] =  score
+                c1 = np.delete(candidate, 0, axis=0)
+                c1p = session.run(tf.image.resize_image_with_crop_or_pad(c1,227,227))
+                c2 = np.delete(candidate, (rows-1), axis=0)
+                c2p = session.run(tf.image.resize_image_with_crop_or_pad(c2,227,227))
+                c3 = np.delete(candidate, 0, axis=1)
+                c3p = session.run(tf.image.resize_image_with_crop_or_pad(c3,227,227))
+                c4 = np.delete(candidate, (cols-1), axis=1)
+                c4p = session.run(tf.image.resize_image_with_crop_or_pad(c4,227,227))
+                
 
-            cl = session.run(logits, feed_dict={x: [c2p]})
-            score = session.run(tf.nn.softmax(cl))
-            score = score[0, CLASS]
-            top[0,1] =  score
 
-            cl = session.run(logits, feed_dict={x: [c3p]})
-            score = session.run(tf.nn.softmax(cl))
-            score = score[0, CLASS]
-            top[0,2] =  score
 
-            cl = session.run(logits, feed_dict={x: [c4p]})
-            score = session.run(tf.nn.softmax(cl))
-            score = score[0, CLASS]
-            top[0,3] =  score
 
-            print (top)
+                # top = np.zeros(shape = [1,4])
+                # top[0,0] = prob_y_class
+                
+                # cl = session.run(logits, feed_dict={x: [c1p]})
+                # score = session.run(tf.nn.softmax(cl))
+                # score = score[0, CLASS]
+                # top[0,0] =  score
 
-            mx = np.max(top)
-            print ("max prob: " + str(mx) + ", top[0,0]: " + str(top[0,0]))
-            l = mx > top[0,0]
-            print(l)
+                # cl = session.run(logits, feed_dict={x: [c2p]})
+                # score = session.run(tf.nn.softmax(cl))
+                # score = score[0, CLASS]
+                # top[0,1] =  score
 
-            # if mx > top[0,0]:
-            which = np.argmax(top)
+                # cl = session.run(logits, feed_dict={x: [c3p]})
+                # score = session.run(tf.nn.softmax(cl))
+                # score = score[0, CLASS]
+                # top[0,2] =  score
 
-            if which == 0:
-                print("c1 pushed")
-                cut = c1
-                cands.put(c1)
-            
-            if which == 1:
-                print("c2 pushed")
-                cut = c2
-                cands.put(c2)
-            
-            if which == 2:
-                print("c3 pushed")
-                cut = c3
-                cands.put(c3)
-            
-            if which == 3:
-                print("c4 pushed")
-                cut = c4
-                cands.put(c4)
+                # cl = session.run(logits, feed_dict={x: [c4p]})
+                # score = session.run(tf.nn.softmax(cl))
+                # score = score[0, CLASS]
+                # top[0,3] =  score
+                batch = np.zeros(shape=(4, 227, 227, 3))
+                batch[0,:] = c1p
+                batch[1,:] = c2p
+                batch[2,:] = c3p
+                batch[3,:] = c4p
+                cl = session.run(logits, feed_dict={x: batch})
+                score = session.run(tf.nn.softmax(cl))
+                top = score[:, CLASS]
 
-            if i == max_loc_itters:
-                print("Saving..")
-                sm.imsave("./localized_pic.jpg", cut)
+
+
+                print (top)
+
+                mx = np.max(top)
+                print ("max prob: " + str(mx))
+                
+
+                choose = 1
+                if i == 1:
+                    choose = beam_width
+                
+                selector = 0
+
+                while selector < choose:
+                
+                    # if mx > top[0,0]:
+                    which = np.argmax(top)
+
+                    if which == 0:
+                        print("c1 pushed")
+                        cut = c1
+                        cands.put(c1)
+                    
+                    if which == 1:
+                        print("c2 pushed")
+                        cut = c2
+                        cands.put(c2)
+                    
+                    if which == 2:
+                        print("c3 pushed")
+                        cut = c3
+                        cands.put(c3)
+                    
+                    if which == 3:
+                        print("c4 pushed")
+                        cut = c4
+                        cands.put(c4)
+
+                    if i == max_loc_itters:
+                        print("Saving..")
+                        sm.imsave("./localized_pic.jpg", cut)
 
 def run_net(y_labs, y_true, restore):
     # He initialization for weights to help avoid vanishing/exploding
