@@ -132,7 +132,7 @@ def l_relu(z, name=None):
     return tf.maximum(0.01 * z, z, name=name)
 
 
-def localize(session, cls, img, itters, beam_width, logits):
+def localize(session, cls, img, itters, beam_width, logits, split):
     
         max_loc_itters = itters
         pre_proc_im = img
@@ -144,23 +144,17 @@ def localize(session, cls, img, itters, beam_width, logits):
         i = 0 #itteration number
 
         while cands.empty() == False and i < max_loc_itters:
-
+            i += 1
             k = 0 # current beam number
             while k < beam_width:
-                if i == 0 :
+                k+=1
+                print("Attempt: " + str(i) + ", For Beam: " + str(k)) 
+                if i == 1 :
                     k = beam_width
 
-                i += 1
-                print("Attempt: " + str(i)) 
-
                 candidate = np.asarray(cands.get())
-                print("First Beam has found object of shape:")
+                print("Beam has found object of shape:")
                 print(candidate.shape)
-
-                candidate2 = np.asarray(cands.get())
-                print("Second Beam has found object of shape:")
-                print(candidate2.shape)
-
 
 
                 
@@ -173,41 +167,16 @@ def localize(session, cls, img, itters, beam_width, logits):
                 rows = sh[0]
                 cols = sh[1]
 
-                c1 = np.delete(candidate, 0, axis=0)
+                c1 = np.delete(candidate, np.array([0, 1]), axis=0)
                 c1p = session.run(tf.image.resize_image_with_crop_or_pad(c1,227,227))
-                c2 = np.delete(candidate, (rows-1), axis=0)
+                c2 = np.delete(candidate, np.array([rows - 1, rows - 2]), axis=0)
                 c2p = session.run(tf.image.resize_image_with_crop_or_pad(c2,227,227))
-                c3 = np.delete(candidate, 0, axis=1)
+                c3 = np.delete(candidate, np.array([0, 1]), axis=1)
                 c3p = session.run(tf.image.resize_image_with_crop_or_pad(c3,227,227))
-                c4 = np.delete(candidate, (cols-1), axis=1)
+                c4 = np.delete(candidate, np.array([cols - 1, cols - 2]), axis=1)
                 c4p = session.run(tf.image.resize_image_with_crop_or_pad(c4,227,227))
                 
 
-
-
-
-                # top = np.zeros(shape = [1,4])
-                # top[0,0] = prob_y_class
-                
-                # cl = session.run(logits, feed_dict={x: [c1p]})
-                # score = session.run(tf.nn.softmax(cl))
-                # score = score[0, CLASS]
-                # top[0,0] =  score
-
-                # cl = session.run(logits, feed_dict={x: [c2p]})
-                # score = session.run(tf.nn.softmax(cl))
-                # score = score[0, CLASS]
-                # top[0,1] =  score
-
-                # cl = session.run(logits, feed_dict={x: [c3p]})
-                # score = session.run(tf.nn.softmax(cl))
-                # score = score[0, CLASS]
-                # top[0,2] =  score
-
-                # cl = session.run(logits, feed_dict={x: [c4p]})
-                # score = session.run(tf.nn.softmax(cl))
-                # score = score[0, CLASS]
-                # top[0,3] =  score
                 batch = np.zeros(shape=(4, 227, 227, 3))
                 batch[0,:] = c1p
                 batch[1,:] = c2p
@@ -232,33 +201,38 @@ def localize(session, cls, img, itters, beam_width, logits):
                 selector = 0
 
                 while selector < choose:
+
+                    selector += 1
                 
                     # if mx > top[0,0]:
                     which = np.argmax(top)
 
                     if which == 0:
-                        print("c1 pushed")
                         cut = c1
+                        print("c1 pushed")
                         cands.put(c1)
                     
                     if which == 1:
-                        print("c2 pushed")
                         cut = c2
+                        print("c2 pushed")
                         cands.put(c2)
                     
                     if which == 2:
-                        print("c3 pushed")
                         cut = c3
+                        print("c3 pushed")
                         cands.put(c3)
                     
                     if which == 3:
-                        print("c4 pushed")
                         cut = c4
+                        print("c4 pushed")
                         cands.put(c4)
+
+                    # top = np.delete(top, which)
+                    top[which] = 0
 
                     if i == max_loc_itters:
                         print("Saving..")
-                        sm.imsave("./localized_pic.jpg", cut)
+                        sm.imsave("./localized_pic" + str(k) + ".jpg", cut)
 
 def run_net(y_labs, y_true, restore):
     # He initialization for weights to help avoid vanishing/exploding
@@ -433,9 +407,9 @@ def run_net(y_labs, y_true, restore):
         # LOCALIZATION
 
         #split into 4
-        pre_proc_im = cv[23,:]
+        pre_proc_im = cv[95,:]
 
-        max_loc_itters = 40
+        max_loc_itters = 4
 
 
         comp_logits = session.run(logits, feed_dict={x: [pre_proc_im]})
@@ -446,7 +420,7 @@ def run_net(y_labs, y_true, restore):
         cands.put(pre_proc_im)
         i = 0
         CLASS = 14
-        localize(session, CLASS, pre_proc_im, 80, 1, logits)
+        localize(session, CLASS, pre_proc_im, 80, 2, logits, 1)
         # while cands.empty() == False and i < max_loc_itters:
         #     print(i)
         #     i += 1
