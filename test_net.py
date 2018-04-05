@@ -46,11 +46,17 @@ num_channels = 3
 
 # Number of classes, one class for each of 10 digits.
 num_classes = 20
+scale = 0.0005
 
 training = tf.placeholder_with_default(False, shape=(), name='training')
 # Batch normalization layer
 bnl = partial(tf.layers.batch_normalization,
         training=training, momentum=0.99, center=True, scale=True)
+# He initialization for weights to help avoid vanishing/exploding
+he_init = tf.contrib.layers.variance_scaling_initializer(factor=1, mode='FAN_AVG', uniform=False)
+# Dense layer
+dl = partial(tf.layers.dense, activation = tf.nn.relu, kernel_regularizer=tf.contrib.layers.l1_regularizer(scale),
+            kernel_initializer=he_init, use_bias=True, name=None)
 
 
 def new_weights(shape):
@@ -118,7 +124,6 @@ batch_size = 100
 total_train_batches = 25
 batch_size_cv = 100
 total_cv_batchs = 25
-scale = 0.0005
 
 x = tf.placeholder(tf.float32, shape=[None, img_size,img_size,num_channels], name='x')
 x_image = tf.reshape(x, [-1, img_size, img_size, num_channels])
@@ -132,11 +137,96 @@ def l_relu(z, name=None):
     return tf.maximum(0.01 * z, z, name=name)
 
 
-def localize(session, cls, img, itters, beam_width, logits, split):
+
+def forw_logs (session, pre_proc_im, m5):
+    graph = tf.get_default_graph()
+
+    prospects = session.run(m5, feed_dict={x: [pre_proc_im]})
+    c1 = tf.slice(prospects, [0,0,0,0], [1,27,28,256])
+    c1p = tf.image.resize_images(c1,[28,28])
+    c2 = tf.slice(prospects, [0,0,0,0], [1,27,28,256])
+    c2p = tf.image.resize_images(c1,[28,28])
+    c3 = tf.slice(prospects, [0,0,0,0], [1,27,28,256])
+    c3p = tf.image.resize_images(c1,[28,28])
+    c4 = tf.slice(prospects, [0,0,0,0], [1,27,28,256])
+    c4p = tf.image.resize_images(c1,[28,28])
+
+    colec = np.array([c1p,c2p,c3p,c4p])
+    i= 0
+    logs = np.zeros(shape = [4, 20])
+
+    for c in colec:
+
+        flat, num_feats = flatten_layer(tf.convert_to_tensor(c1p))
+        print("FLATTEN?")
+        fc1_W = graph.get_tensor_by_name("fc1/kernel:0")
+        fc1_b = graph.get_tensor_by_name("fc1/bias:0")
+        fc1 = tf.add(tf.matmul(flat, fc1_W), fc1_b)
+
+        fc2_W = graph.get_tensor_by_name("fc2/kernel:0")
+        fc2_b = graph.get_tensor_by_name("fc2/bias:0")
+        fc2 = tf.add(tf.matmul(fc1, fc2_W), fc2_b)
+
+        outputs = graph.get_tensor_by_name("outputs/kernel:0")
+        b = graph.get_tensor_by_name("outputs/bias:0")
+        logits = tf.add(tf.matmul(fc2, outputs), b)
+        logs[i, :] = session.run(logits)
+        i += 1
+    
+    return logs
+
+
+def localize(session, cls, pre_proc_im, itters, beam_width, logits, m5, f,h1,h2, split):
     
         max_loc_itters = itters
-        pre_proc_im = img
+        # he_init = tf.contrib.layers.variance_scaling_initializer(factor=1, mode='FAN_AVG', uniform=False)
+        # dl = partial(tf.layers.dense, activation = tf.nn.relu, kernel_regularizer=tf.contrib.layers.l1_regularizer(scale),
+        #         kernel_initializer=he_init, use_bias=True, name=None)
+        
+        logits = forw_logs(session, pre_proc_im, m5)
 
+
+        print("Running M5...")
+        
+        # print(session.run(logits, feed_dict={x: pre_proc_im}))
+        print(forw_logs (session, pre_proc_im, m5))
+
+
+        # print((session.run(c1p, feed_dict={x: pre_proc_im})).shape)
+        # layer_flat, num_feats = flatten_layer(tf.convert_to_tensor(k))
+        # print(layer_flat)
+        # layer_fc1 = dl(layer_flat, fc_size, activation=None)
+        # fc1_dropped = tf.layers.dropout(layer_fc1, 0.5, training=training)
+        # layer_fc2 = dl(fc1_dropped, fc_size, activation=None)
+        # bn7 = bnl(layer_fc2)
+        # bn7_act = tf.nn.relu(bn7)
+        # fc2_dropped = tf.layers.dropout(bn7_act, 0.5, training=training)
+        # logits = dl(fc2_dropped, num_classes, activation=None)
+        
+        # c2 = np.delete(prospects, rows - 1, axis=1)
+        # c2p = session.run(tf.image.resize_image_with_crop_or_pad(c2,227,227))
+        # c3 = np.delete(prospects, 0, axis=2)
+        # c3p = session.run(tf.image.resize_image_with_crop_or_pad(c3,227,227))
+        # c4 = np.delete(prospects, cols - 1, axis=2)
+        # c4p = session.run(tf.image.resize_image_with_crop_or_pad(c4,227,227))
+        
+        # layer_flat = flatten_layer(layer_conv5)
+        # layer_fc1 = dl(layer_flat, fc_size, activation=None, name="fc1")
+        # bn6 = bnl(layer_fc1)
+        # bn6_act = tf.nn.relu(bn6)
+        # fc1_dropped = tf.layers.dropout(bn6_act, 0.5, training=training)
+        # layer_fc2 = dl(fc1_dropped, fc_size, activation=None, name="fc2")
+        # bn7 = bnl(layer_fc2)
+        # bn7_act = tf.nn.relu(bn7)
+        # fc2_dropped = tf.layers.dropout(bn7_act, 0.5, training=training)
+        
+        # prosp_log = session.run(logits, feed_dict={x: prospects})
+        # print(prosp_log)
+        # print(prospects.shape)
+        # resize_prosp = session.run(logits, tf.image.resize_image_with_crop_or_pad(prospects, 227, 227))
+        # print(resize_prosp)
+
+ 
         cands = Queue()
         cands.put(pre_proc_im)
         CLASS = cls
@@ -235,11 +325,7 @@ def localize(session, cls, img, itters, beam_width, logits, split):
                         sm.imsave("./localized_pic" + str(k) + ".jpg", cut)
 
 def run_net(y_labs, y_true, restore):
-    # He initialization for weights to help avoid vanishing/exploding
-    he_init = tf.contrib.layers.variance_scaling_initializer(factor=1, mode='FAN_AVG', uniform=False)
-    # Dense layer
-    dl = partial(tf.layers.dense, activation = tf.nn.relu, kernel_regularizer=tf.contrib.layers.l1_regularizer(scale),
-                kernel_initializer=he_init, use_bias=True, name=None)
+    
 
     # Apply dropout to input layer
     # X_drop = tf.layers.dropout(X, 0.15, training=training)
@@ -407,108 +493,15 @@ def run_net(y_labs, y_true, restore):
         # LOCALIZATION
 
         #split into 4
+        # pre_proc_im = np.zeros(shape=(1,227,227,3))
+        # pre_proc_im[0,:,:,:] = cv[95,:]
         pre_proc_im = cv[95,:]
-
-        max_loc_itters = 4
-
-
-        comp_logits = session.run(logits, feed_dict={x: [pre_proc_im]})
-        y_class = session.run(tf.nn.softmax(comp_logits))
-        fmax = y_class[0, 0]
 
         cands = Queue()
         cands.put(pre_proc_im)
-        i = 0
         CLASS = 14
-        localize(session, CLASS, pre_proc_im, 80, 2, logits, 1)
-        # while cands.empty() == False and i < max_loc_itters:
-        #     print(i)
-        #     i += 1
-            
-        #     candidate = np.asarray(cands.get())
-        #     print(candidate.shape)
-
-            
-        #     candidatep = session.run(tf.image.resize_image_with_crop_or_pad(candidate,227,227))
-        #     comp_logits = session.run(logits, feed_dict={x: [candidatep]})
-        #     y_class = session.run(tf.nn.softmax(comp_logits))
-        #     prob_y_class = y_class[0, CLASS]
-            
-        #     sh = candidate.shape
-        #     rows = sh[0]
-        #     cols = sh[1]
-
-        #     c1 = np.delete(candidate, 0, axis=0)
-        #     c1p = session.run(tf.image.resize_image_with_crop_or_pad(c1,227,227))
-        #     c2 = np.delete(candidate, (rows-1), axis=0)
-        #     c2p = session.run(tf.image.resize_image_with_crop_or_pad(c2,227,227))
-        #     c3 = np.delete(candidate, 0, axis=1)
-        #     c3p = session.run(tf.image.resize_image_with_crop_or_pad(c3,227,227))
-        #     c4 = np.delete(candidate, (cols-1), axis=1)
-        #     c4p = session.run(tf.image.resize_image_with_crop_or_pad(c4,227,227))
-            
-
-
-
-
-        #     top = np.zeros(shape = [1,4])
-        #     # top[0,0] = prob_y_class
-            
-        #     cl = session.run(logits, feed_dict={x: [c1p]})
-        #     score = session.run(tf.nn.softmax(cl))
-        #     score = score[0, CLASS]
-        #     top[0,0] =  score
-
-        #     cl = session.run(logits, feed_dict={x: [c2p]})
-        #     score = session.run(tf.nn.softmax(cl))
-        #     score = score[0, CLASS]
-        #     top[0,1] =  score
-
-        #     cl = session.run(logits, feed_dict={x: [c3p]})
-        #     score = session.run(tf.nn.softmax(cl))
-        #     score = score[0, CLASS]
-        #     top[0,2] =  score
-
-        #     cl = session.run(logits, feed_dict={x: [c4p]})
-        #     score = session.run(tf.nn.softmax(cl))
-        #     score = score[0, CLASS]
-        #     top[0,3] =  score
-
-        #     print (top)
-
-        #     mx = np.max(top)
-        #     print ("max prob: " + str(mx) + ", top[0,0]: " + str(top[0,0]))
-        #     l = mx > top[0,0]
-        #     print(l)
-
-        #     # if mx > top[0,0]:
-        #     which = np.argmax(top)
-
-        #     if which == 0:
-        #         print("c1 pushed")
-        #         cut = c1
-        #         cands.put(c1)
-            
-        #     if which == 1:
-        #         print("c2 pushed")
-        #         cut = c2
-        #         cands.put(c2)
-            
-        #     if which == 2:
-        #         print("c3 pushed")
-        #         cut = c3
-        #         cands.put(c3)
-            
-        #     if which == 3:
-        #         print("c4 pushed")
-        #         cut = c4
-        #         cands.put(c4)
-
-        #     if i == max_loc_itters:
-        #         print("Saving..")
-        #         sm.imsave("./localized_pic.jpg", cut)
-
-
+        localize(session, CLASS, pre_proc_im, 80, 2, logits, 
+                layer_conv5, layer_flat, layer_fc1, layer_fc2, 1)
 
         
     else:
