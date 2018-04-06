@@ -173,6 +173,7 @@ def forw_logs (session, pre_proc_im, m5):
         logs[i, :] = session.run(logits)
         i += 1
     
+    
     return logs
 
 
@@ -186,47 +187,11 @@ def localize(session, cls, pre_proc_im, itters, beam_width, logits, m5, f,h1,h2,
         logits = forw_logs(session, pre_proc_im, m5)
 
 
-        print("Running M5...")
+        print("Running Localization ...")
         
         # print(session.run(logits, feed_dict={x: pre_proc_im}))
         print(forw_logs (session, pre_proc_im, m5))
 
-
-        # print((session.run(c1p, feed_dict={x: pre_proc_im})).shape)
-        # layer_flat, num_feats = flatten_layer(tf.convert_to_tensor(k))
-        # print(layer_flat)
-        # layer_fc1 = dl(layer_flat, fc_size, activation=None)
-        # fc1_dropped = tf.layers.dropout(layer_fc1, 0.5, training=training)
-        # layer_fc2 = dl(fc1_dropped, fc_size, activation=None)
-        # bn7 = bnl(layer_fc2)
-        # bn7_act = tf.nn.relu(bn7)
-        # fc2_dropped = tf.layers.dropout(bn7_act, 0.5, training=training)
-        # logits = dl(fc2_dropped, num_classes, activation=None)
-        
-        # c2 = np.delete(prospects, rows - 1, axis=1)
-        # c2p = session.run(tf.image.resize_image_with_crop_or_pad(c2,227,227))
-        # c3 = np.delete(prospects, 0, axis=2)
-        # c3p = session.run(tf.image.resize_image_with_crop_or_pad(c3,227,227))
-        # c4 = np.delete(prospects, cols - 1, axis=2)
-        # c4p = session.run(tf.image.resize_image_with_crop_or_pad(c4,227,227))
-        
-        # layer_flat = flatten_layer(layer_conv5)
-        # layer_fc1 = dl(layer_flat, fc_size, activation=None, name="fc1")
-        # bn6 = bnl(layer_fc1)
-        # bn6_act = tf.nn.relu(bn6)
-        # fc1_dropped = tf.layers.dropout(bn6_act, 0.5, training=training)
-        # layer_fc2 = dl(fc1_dropped, fc_size, activation=None, name="fc2")
-        # bn7 = bnl(layer_fc2)
-        # bn7_act = tf.nn.relu(bn7)
-        # fc2_dropped = tf.layers.dropout(bn7_act, 0.5, training=training)
-        
-        # prosp_log = session.run(logits, feed_dict={x: prospects})
-        # print(prosp_log)
-        # print(prospects.shape)
-        # resize_prosp = session.run(logits, tf.image.resize_image_with_crop_or_pad(prospects, 227, 227))
-        # print(resize_prosp)
-
- 
         cands = Queue()
         cands.put(pre_proc_im)
         CLASS = cls
@@ -238,7 +203,7 @@ def localize(session, cls, pre_proc_im, itters, beam_width, logits, m5, f,h1,h2,
             k = 0 # current beam number
             while k < beam_width:
                 k+=1
-                print("Attempt: " + str(i) + ", For Beam: " + str(k)) 
+                print("\n\nAttempt: " + str(i) + ", For Beam: " + str(k)) 
                 if i == 1 :
                     k = beam_width
 
@@ -248,40 +213,15 @@ def localize(session, cls, pre_proc_im, itters, beam_width, logits, m5, f,h1,h2,
 
 
                 
-                candidatep = session.run(tf.image.resize_image_with_crop_or_pad(candidate,227,227))
-                comp_logits = session.run(logits, feed_dict={x: [candidatep]})
-                y_class = session.run(tf.nn.softmax(comp_logits))
-                prob_y_class = y_class[0, CLASS]
-                
-                sh = candidate.shape
-                rows = sh[0]
-                cols = sh[1]
-
-                c1 = np.delete(candidate, np.array([0, 1]), axis=0)
-                c1p = session.run(tf.image.resize_image_with_crop_or_pad(c1,227,227))
-                c2 = np.delete(candidate, np.array([rows - 1, rows - 2]), axis=0)
-                c2p = session.run(tf.image.resize_image_with_crop_or_pad(c2,227,227))
-                c3 = np.delete(candidate, np.array([0, 1]), axis=1)
-                c3p = session.run(tf.image.resize_image_with_crop_or_pad(c3,227,227))
-                c4 = np.delete(candidate, np.array([cols - 1, cols - 2]), axis=1)
-                c4p = session.run(tf.image.resize_image_with_crop_or_pad(c4,227,227))
-                
-
-                batch = np.zeros(shape=(4, 227, 227, 3))
-                batch[0,:] = c1p
-                batch[1,:] = c2p
-                batch[2,:] = c3p
-                batch[3,:] = c4p
-                cl = session.run(logits, feed_dict={x: batch})
+                cl = forw_logs (session, candidate, m5)
                 score = session.run(tf.nn.softmax(cl))
                 top = score[:, CLASS]
 
-
-
+                print ("Softmaxed Porbabilities: ")
                 print (top)
 
                 mx = np.max(top)
-                print ("max prob: " + str(mx))
+                print ("\nmax prob: " + str(mx) + "\n")
                 
 
                 choose = 1
@@ -321,7 +261,7 @@ def localize(session, cls, pre_proc_im, itters, beam_width, logits, m5, f,h1,h2,
                     top[which] = 0
 
                     if i == max_loc_itters:
-                        print("Saving..")
+                        print("\n\nSaving..")
                         sm.imsave("./localized_pic" + str(k) + ".jpg", cut)
 
 def run_net(y_labs, y_true, restore):
