@@ -249,21 +249,11 @@ def localize(session, cls, pre_proc_im, itters, beam_width, logits, m5, f,h1,h2,
 			print("Beam has found object of shape:")
 			print(candidate.shape)
 
-
-
-			#cl = forw_logs (session, candidate, m5)
-			#score = session.run(tf.nn.softmax(cl))
-			#top = score[:, CLASS]
-
-			mx = np.max(top)
-			print ("\nmax prob: " + str(mx) + "\n")
-
-
 			choose = 1
 			if i == 1:
 				choose = beam_width
 
-			candidate = tf.image.resize_images(candidate,[28,28])
+			candidate = tf.image.resize_images(candidate,[227,227])
 			cut_col = forw_logs (session, candidate, m5, choose)
 			
 			for cut in cut_col:
