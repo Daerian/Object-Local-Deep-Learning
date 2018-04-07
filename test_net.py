@@ -269,8 +269,8 @@ def localize(session, cls, pre_proc_im, itters, beam_width, logits, m5, f,h1,h2,
 			candidate = tf.image.resize_images(candidate,[28,28])
 			cut_col = forw_logs (session, candidate, m5, choose)
 
-		    for cut in cut_col:
-	
+			for cut in cut_col:
+
 				cands.put(cut)
 
 				if i == max_loc_itters:
