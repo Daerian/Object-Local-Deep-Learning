@@ -255,9 +255,6 @@ def localize(session, cls, pre_proc_im, itters, beam_width, logits, m5, f,h1,h2,
 			#score = session.run(tf.nn.softmax(cl))
 			#top = score[:, CLASS]
 
-			print ("Softmaxed Porbabilities: ")
-			print (top)
-
 			mx = np.max(top)
 			print ("\nmax prob: " + str(mx) + "\n")
 
