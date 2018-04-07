@@ -194,19 +194,18 @@ def forw_logs (session, pre_proc_im, m5, choose):
         which = np.argmax()
 
         if which == 0:
-	    print("c1 pushed")
+            print("c1 pushed")
             cut.append(c1)
                     
-	if which == 1:
-	    print("c2 pushed")
+		if which == 1:
+            print("c2 pushed")
             cut.append(c2)
-                    
-	if which == 2:
-	    print("c3 pushed")
+		if which == 2:
+            print("c3 pushed")
             cut.append(c3)
 
-	if which == 3:
-	    print("c4 pushed")
+		if which == 3:
+            print("c4 pushed")
             cut.append(c4)
 
 	top[which] = 0
@@ -218,66 +217,65 @@ def forw_logs (session, pre_proc_im, m5, choose):
 
 def localize(session, cls, pre_proc_im, itters, beam_width, logits, m5, f,h1,h2, split):
     
-        max_loc_itters = itters
-        # he_init = tf.contrib.layers.variance_scaling_initializer(factor=1, mode='FAN_AVG', uniform=False)
-        # dl = partial(tf.layers.dense, activation = tf.nn.relu, kernel_regularizer=tf.contrib.layers.l1_regularizer(scale),
-        #         kernel_initializer=he_init, use_bias=True, name=None)
-        
-        #logits = forw_logs(session, pre_proc_im, m5, 1)
+	max_loc_itters = itters
+	# he_init = tf.contrib.layers.variance_scaling_initializer(factor=1, mode='FAN_AVG', uniform=False)
+	# dl = partial(tf.layers.dense, activation = tf.nn.relu, kernel_regularizer=tf.contrib.layers.l1_regularizer(scale),
+	#         kernel_initializer=he_init, use_bias=True, name=None)
+
+	#logits = forw_logs(session, pre_proc_im, m5, 1)
 
 
-        print("Running Localization ...")
-        
-        # print(session.run(logits, feed_dict={x: pre_proc_im}))
-        # print(forw_logs (session, pre_proc_im, m5))
+	print("Running Localization ...")
 
-        cands = Queue()
-        cands.put(pre_proc_im)
-        CLASS = cls
+	# print(session.run(logits, feed_dict={x: pre_proc_im}))
+	# print(forw_logs (session, pre_proc_im, m5))
 
-        i = 0 #itteration number
+	cands = Queue()
+	cands.put(pre_proc_im)
+	CLASS = cls
 
-        while cands.empty() == False and i < max_loc_itters:
-            i += 1
-            k = 0 # current beam number
-            while k < beam_width:
-                k+=1
-                print("\n\nAttempt: " + str(i) + ", For Beam: " + str(k)) 
-                if i == 1 :
-                    k = beam_width
+	i = 0 #itteration number
 
-                candidate = np.asarray(cands.get())
-                print("Beam has found object of shape:")
-                print(candidate.shape)
+	while cands.empty() == False and i < max_loc_itters:
+		i += 1
+		k = 0 # current beam number
+		while k < beam_width:
+			k+=1
+			print("\n\nAttempt: " + str(i) + ", For Beam: " + str(k)) 
+			if i == 1 :
+				k = beam_width
 
-
-                
-                #cl = forw_logs (session, candidate, m5)
-                #score = session.run(tf.nn.softmax(cl))
-                #top = score[:, CLASS]
-
-                print ("Softmaxed Porbabilities: ")
-                print (top)
-
-                mx = np.max(top)
-                print ("\nmax prob: " + str(mx) + "\n")
-                
-
-                choose = 1
-                if i == 1:
-                    choose = beam_width
-		
-		candidate = tf.image.resize_images(candidate,[28,28])
-		cut_col = forw_logs (session, candidate, m5, choose)
+			candidate = np.asarray(cands.get())
+			print("Beam has found object of shape:")
+			print(candidate.shape)
 
 
-                for cut in cut_col:
-		    
-		    cands.put(cut)
 
-		    if i == max_loc_itters:
-			print("\n\nSaving..")
-			sm.imsave("./localized_pic" + str(k) + ".jpg", cut)
+			#cl = forw_logs (session, candidate, m5)
+			#score = session.run(tf.nn.softmax(cl))
+			#top = score[:, CLASS]
+
+			print ("Softmaxed Porbabilities: ")
+			print (top)
+
+			mx = np.max(top)
+			print ("\nmax prob: " + str(mx) + "\n")
+
+
+			choose = 1
+			if i == 1:
+				choose = beam_width
+
+			candidate = tf.image.resize_images(candidate,[28,28])
+			cut_col = forw_logs (session, candidate, m5, choose)
+
+		    for cut in cut_col:
+	
+				cands.put(cut)
+
+				if i == max_loc_itters:
+					print("\n\nSaving..")
+					sm.imsave("./localized_pic" + str(k) + ".jpg", cut)
 
 def run_net(y_labs, y_true, restore):
     
