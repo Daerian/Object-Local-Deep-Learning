@@ -174,45 +174,45 @@ def forw_logs (session, pre_proc_im, m5, choose):
         i += 1
     
     
-    score = session.run(tf.nn.softmax(logs))
-    top = score[:, CLASS]
-    
-    print ("Softmaxed Porbabilities: ")
-    print (top)
-    mx = np.max(top)
-    print ("\nmax prob: " + str(mx) + "\n")
-    
+	score = session.run(tf.nn.softmax(logs))
+	top = score[:, CLASS]
 
-    cut = []
+	print ("Softmaxed Porbabilities: ")
+	print (top)
+	mx = np.max(top)
+	print ("\nmax prob: " + str(mx) + "\n")
 
-    selector = 0
 
-    while selector < choose:
+	cut = []
 
-        selector += 1
-                
-        which = np.argmax()
+	selector = 0
 
-        if which == 0:
-            print("c1 pushed")
-            cut.append(c1)
-                    
+	while selector < choose:
+
+		selector += 1
+				
+		which = np.argmax()
+
+		if which == 0:
+			print("c1 pushed")
+			cut.append(c1)
+				    
 		if which == 1:
-            print("c2 pushed")
-            cut.append(c2)
+			print("c2 pushed")
+			cut.append(c2)
 		if which == 2:
-            print("c3 pushed")
-            cut.append(c3)
+			print("c3 pushed")
+			cut.append(c3)
 
 		if which == 3:
-            print("c4 pushed")
-            cut.append(c4)
+			print("c4 pushed")
+			cut.append(c4)
 
-	top[which] = 0
+		top[which] = 0
 
 
-    cut = np.array(cut)
-    return cut
+	cut = np.array(cut)
+	return cut
 
 
 def localize(session, cls, pre_proc_im, itters, beam_width, logits, m5, f,h1,h2, split):
