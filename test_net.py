@@ -138,7 +138,7 @@ def l_relu(z, name=None):
 
 
 
-def forw_logs (session, pre_proc_im, m5):
+def forw_logs (session, pre_proc_im, m5, choose):
     graph = tf.get_default_graph()
 
     prospects = session.run(m5, feed_dict={x: [pre_proc_im]})
@@ -174,7 +174,46 @@ def forw_logs (session, pre_proc_im, m5):
         i += 1
     
     
-    return logs
+    score = session.run(tf.nn.softmax(logs))
+    top = score[:, CLASS]
+    
+    print ("Softmaxed Porbabilities: ")
+    print (top)
+    mx = np.max(top)
+    print ("\nmax prob: " + str(mx) + "\n")
+    
+
+    cut = []
+
+    selector = 0
+
+    while selector < choose:
+
+        selector += 1
+                
+        which = np.argmax()
+
+        if which == 0:
+	    print("c1 pushed")
+            cut.append(c1)
+                    
+	if which == 1:
+	    print("c2 pushed")
+            cut.append(c2)
+                    
+	if which == 2:
+	    print("c3 pushed")
+            cut.append(c3)
+
+	if which == 3:
+	    print("c4 pushed")
+            cut.append(c4)
+
+	top[which] = 0
+
+
+    cut = np.array(cut)
+    return cut
 
 
 def localize(session, cls, pre_proc_im, itters, beam_width, logits, m5, f,h1,h2, split):
@@ -184,13 +223,13 @@ def localize(session, cls, pre_proc_im, itters, beam_width, logits, m5, f,h1,h2,
         # dl = partial(tf.layers.dense, activation = tf.nn.relu, kernel_regularizer=tf.contrib.layers.l1_regularizer(scale),
         #         kernel_initializer=he_init, use_bias=True, name=None)
         
-        logits = forw_logs(session, pre_proc_im, m5)
+        #logits = forw_logs(session, pre_proc_im, m5, 1)
 
 
         print("Running Localization ...")
         
         # print(session.run(logits, feed_dict={x: pre_proc_im}))
-        print(forw_logs (session, pre_proc_im, m5))
+        # print(forw_logs (session, pre_proc_im, m5))
 
         cands = Queue()
         cands.put(pre_proc_im)
@@ -213,9 +252,9 @@ def localize(session, cls, pre_proc_im, itters, beam_width, logits, m5, f,h1,h2,
 
 
                 
-                cl = forw_logs (session, candidate, m5)
-                score = session.run(tf.nn.softmax(cl))
-                top = score[:, CLASS]
+                #cl = forw_logs (session, candidate, m5)
+                #score = session.run(tf.nn.softmax(cl))
+                #top = score[:, CLASS]
 
                 print ("Softmaxed Porbabilities: ")
                 print (top)
@@ -227,42 +266,18 @@ def localize(session, cls, pre_proc_im, itters, beam_width, logits, m5, f,h1,h2,
                 choose = 1
                 if i == 1:
                     choose = beam_width
-                
-                selector = 0
+		
+		candidate = tf.image.resize_images(candidate,[28,28])
+		cut_col = forw_logs (session, candidate, m5, choose)
 
-                while selector < choose:
 
-                    selector += 1
-                
-                    # if mx > top[0,0]:
-                    which = np.argmax(top)
+                for cut in cut_col:
+		    
+		    cands.put(cut)
 
-                    if which == 0:
-                        cut = c1
-                        print("c1 pushed")
-                        cands.put(c1)
-                    
-                    if which == 1:
-                        cut = c2
-                        print("c2 pushed")
-                        cands.put(c2)
-                    
-                    if which == 2:
-                        cut = c3
-                        print("c3 pushed")
-                        cands.put(c3)
-                    
-                    if which == 3:
-                        cut = c4
-                        print("c4 pushed")
-                        cands.put(c4)
-
-                    # top = np.delete(top, which)
-                    top[which] = 0
-
-                    if i == max_loc_itters:
-                        print("\n\nSaving..")
-                        sm.imsave("./localized_pic" + str(k) + ".jpg", cut)
+		    if i == max_loc_itters:
+			print("\n\nSaving..")
+			sm.imsave("./localized_pic" + str(k) + ".jpg", cut)
 
 def run_net(y_labs, y_true, restore):
     
