@@ -191,7 +191,7 @@ def forw_logs (session, pre_proc_im, CLASS, m5, choose):
 
 		selector += 1
 				
-		which = np.argmax()
+		which = np.argmax(top)
 
 		if which == 0:
 			print("c1 pushed")
