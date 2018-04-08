@@ -141,14 +141,14 @@ def l_relu(z, name=None):
 def forw_logs (session, pre_proc_im, m5, choose):
 	graph = tf.get_default_graph()
 
-	prospects = session.run(m5, feed_dict={x: [pre_proc_im]})
+	prospects = session.run(m5, feed_dict={x: pre_proc_im})
 	c1 = tf.slice(prospects, [0,0,0,0], [1,27,28,256])
 	c1p = tf.image.resize_images(c1,[28,28])
-	c2 = tf.slice(prospects, [0,0,0,0], [1,27,28,256])
+	c2 = tf.slice(prospects, [0,1,0,0], [1,28,28,256])
 	c2p = tf.image.resize_images(c1,[28,28])
-	c3 = tf.slice(prospects, [0,0,0,0], [1,27,28,256])
+	c3 = tf.slice(prospects, [0,0,0,0], [1,28,27,256])
 	c3p = tf.image.resize_images(c1,[28,28])
-	c4 = tf.slice(prospects, [0,0,0,0], [1,27,28,256])
+	c4 = tf.slice(prospects, [0,0,1,0], [1,28,28,256])
 	c4p = tf.image.resize_images(c1,[28,28])
 
 	colec = np.array([c1p,c2p,c3p,c4p])
@@ -215,7 +215,7 @@ def forw_logs (session, pre_proc_im, m5, choose):
 	return cut
 
 
-def localize(session, cls, pre_proc_im, itters, beam_width, logits, m5, f,h1,h2, split):
+def localize(session, cls, pre_proc_im, itters, beam_width, logits, m5, f, h1, h2, split):
     
 	max_loc_itters = itters
 	# he_init = tf.contrib.layers.variance_scaling_initializer(factor=1, mode='FAN_AVG', uniform=False)
@@ -253,7 +253,7 @@ def localize(session, cls, pre_proc_im, itters, beam_width, logits, m5, f,h1,h2,
 			if i == 1:
 				choose = beam_width
 
-			candidate = tf.image.resize_images(candidate,[227,227])
+			candidate = tf.image.resize_image_with_crop_or_pad(candidate,227,227)
 			cut_col = forw_logs (session, candidate, m5, choose)
 			
 			for cut in cut_col:
