@@ -247,9 +247,9 @@ def localize(session, cls, pre_proc_im, itters, beam_width, logits, m5, f, h1, h
 			if i == 1 :
 				k = beam_width
 
-            candidate = cands.get()
+            # candidate = cands.get()
 
-			# candidate = np.asarray(cands.get())
+			candidate = np.asarray(cands.get())
 			print("Beam has found object of shape:")
 			print(candidate.shape)
 
