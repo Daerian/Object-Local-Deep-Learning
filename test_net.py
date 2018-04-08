@@ -141,7 +141,7 @@ def l_relu(z, name=None):
 def forw_logs (session, pre_proc_im, m5, choose):
 	graph = tf.get_default_graph()
 
-	prospects = session.run(m5, feed_dict={x: pre_proc_im})
+	prospects = session.run(m5, feed_dict={x: [pre_proc_im]})
 	c1 = tf.slice(prospects, [0,0,0,0], [1,27,28,256])
 	c1p = tf.image.resize_images(c1,[28,28])
 	c2 = tf.slice(prospects, [0,1,0,0], [1,28,28,256])
