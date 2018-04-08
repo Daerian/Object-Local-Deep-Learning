@@ -253,7 +253,7 @@ def localize(session, cls, pre_proc_im, itters, beam_width, logits, m5, f, h1, h
 			if i == 1:
 				choose = beam_width
 
-			candidate = tf.image.resize_image_with_crop_or_pad(candidate,227,227)
+			candidate = session.run(tf.image.resize_image_with_crop_or_pad(candidate,227,227))
 			cut_col = forw_logs (session, candidate, m5, choose)
 			
 			for cut in cut_col:
