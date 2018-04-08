@@ -211,7 +211,7 @@ def forw_logs (session, pre_proc_im, m5, choose):
 		top[which] = 0
 
 
-	cut = np.array(cut)
+	cut = np.asarray(cut)
 	return cut
 
 
