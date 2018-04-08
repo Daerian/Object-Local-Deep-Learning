@@ -140,6 +140,15 @@ def l_relu(z, name=None):
 
 def forw_logs (session, pre_proc_im, CLASS, m5, choose):
 	graph = tf.get_default_graph()
+	
+	fc1_W = graph.get_tensor_by_name("fc1/kernel:0")
+	fc1_b = graph.get_tensor_by_name("fc1/bias:0")
+
+	fc2_W = graph.get_tensor_by_name("fc2/kernel:0")
+	fc2_b = graph.get_tensor_by_name("fc2/bias:0")
+	outputs = graph.get_tensor_by_name("outputs/kernel:0")
+	b = graph.get_tensor_by_name("outputs/bias:0")
+
 
 	prospects = session.run(m5, feed_dict={x: [pre_proc_im]})
 	c1 = tf.slice(prospects, [0,0,0,0], [1,27,28,256])
@@ -154,21 +163,14 @@ def forw_logs (session, pre_proc_im, CLASS, m5, choose):
 	colec = np.array([c1p,c2p,c3p,c4p])
 	i= 0
 	logs = np.zeros(shape = [4, 20])
+	flat, num_feats = flatten_layer(tf.convert_to_tensor(c1p))
 
 	for c in colec:
 
-		flat, num_feats = flatten_layer(tf.convert_to_tensor(c1p))
-		print("FLATTEN?")
-		fc1_W = graph.get_tensor_by_name("fc1/kernel:0")
-		fc1_b = graph.get_tensor_by_name("fc1/bias:0")
 		fc1 = tf.add(tf.matmul(flat, fc1_W), fc1_b)
 
-		fc2_W = graph.get_tensor_by_name("fc2/kernel:0")
-		fc2_b = graph.get_tensor_by_name("fc2/bias:0")
 		fc2 = tf.add(tf.matmul(fc1, fc2_W), fc2_b)
 
-		outputs = graph.get_tensor_by_name("outputs/kernel:0")
-		b = graph.get_tensor_by_name("outputs/bias:0")
 		logits = tf.add(tf.matmul(fc2, outputs), b)
 		logs[i, :] = session.run(logits)
 		i += 1
@@ -245,7 +247,8 @@ def localize(session, cls, pre_proc_im, itters, beam_width, logits, m5, f, h1, h
 			if i == 1 :
 				k = beam_width
 
-			candidate = np.asarray(cands.get())
+			# candidate = np.asarray(cands.get())
+            candidate = cands.get()
 			print("Beam has found object of shape:")
 			print(candidate.shape)
 
@@ -253,10 +256,14 @@ def localize(session, cls, pre_proc_im, itters, beam_width, logits, m5, f, h1, h
 			if i == 1:
 				choose = beam_width
 
+            
 			candidate = session.run(tf.image.resize_image_with_crop_or_pad(candidate,227,227))
+            print(candidate.shape)
 			cut_col = forw_logs (session, candidate, CLASS, m5, choose)
-			
+            print(cut_col)
+			print("ADDING CUTS..")
 			for cut in cut_col:
+                print(cut)
 				cands.put(cut)
 
 				if i == max_loc_itters:
