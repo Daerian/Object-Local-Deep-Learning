@@ -138,7 +138,7 @@ def l_relu(z, name=None):
 
 
 
-def forw_logs (session, pre_proc_im, m5, choose):
+def forw_logs (session, pre_proc_im, CLASS, m5, choose):
 	graph = tf.get_default_graph()
 
 	prospects = session.run(m5, feed_dict={x: [pre_proc_im]})
@@ -254,7 +254,7 @@ def localize(session, cls, pre_proc_im, itters, beam_width, logits, m5, f, h1, h
 				choose = beam_width
 
 			candidate = session.run(tf.image.resize_image_with_crop_or_pad(candidate,227,227))
-			cut_col = forw_logs (session, candidate, m5, choose)
+			cut_col = forw_logs (session, candidate, CLASS, m5, choose)
 			
 			for cut in cut_col:
 				cands.put(cut)
