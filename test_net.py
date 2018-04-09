@@ -136,140 +136,183 @@ y_cv = tf.placeholder(tf.int64, shape=(None), name='y_cv')
 def l_relu(z, name=None):
     return tf.maximum(0.01 * z, z, name=name)
 
+def get_back_size (height, width,filt_size,pads = 0,stride_size = 1):
+    
+    W = (((width-1)*stride_size)-(2*pads)) + filt_size
+
+    H = (((height-1)*stride_size)-(2*pads)) + filt_size
+
+    prev_size = [W,H]
+    return (prev_size)
 
 
-def forw_logs (session, pre_proc_im, CLASS, m5, choose):
-	graph = tf.get_default_graph()
-	
-	fc1_W = graph.get_tensor_by_name("fc1/kernel:0")
-	fc1_b = graph.get_tensor_by_name("fc1/bias:0")
+def forw_logs (session, prospects, CLASS, sz, cnt, choose):
+    graph = tf.get_default_graph()
+    
+    fc1_W = graph.get_tensor_by_name("fc1/kernel:0")
+    fc1_b = graph.get_tensor_by_name("fc1/bias:0")
 
-	fc2_W = graph.get_tensor_by_name("fc2/kernel:0")
-	fc2_b = graph.get_tensor_by_name("fc2/bias:0")
-	outputs = graph.get_tensor_by_name("outputs/kernel:0")
-	b = graph.get_tensor_by_name("outputs/bias:0")
+    fc2_W = graph.get_tensor_by_name("fc2/kernel:0")
+    fc2_b = graph.get_tensor_by_name("fc2/bias:0")
+    outputs = graph.get_tensor_by_name("outputs/kernel:0")
+    b = graph.get_tensor_by_name("outputs/bias:0")
 
+    rows = sz[1]
+    cols = sz[2]
 
-	prospects = session.run(m5, feed_dict={x: [pre_proc_im]})
-	c1 = tf.slice(prospects, [0,0,0,0], [1,27,28,256])
-	c1p = tf.image.resize_images(c1,[28,28])
-	c2 = tf.slice(prospects, [0,1,0,0], [1,28,28,256])
-	c2p = tf.image.resize_images(c1,[28,28])
-	c3 = tf.slice(prospects, [0,0,0,0], [1,28,27,256])
-	c3p = tf.image.resize_images(c1,[28,28])
-	c4 = tf.slice(prospects, [0,0,1,0], [1,28,28,256])
-	c4p = tf.image.resize_images(c1,[28,28])
+    
+    c1 = tf.slice(prospects, [0,0,0,0], [1,rows-1,cols,256], name="c1")
+    c1p = tf.image.resize_images(c1,[28,28])
+    c2 = tf.slice(prospects, [0,1,0,0],[1,rows-1,cols,256], name="c2")
+    c2p = tf.image.resize_images(c1,[28,28])
+    c3 = tf.slice(prospects, [0,0,0,0], [1,rows,cols-1,256], name="c3")
+    c3p = tf.image.resize_images(c1,[28,28])
+    c4 = tf.slice(prospects, [0,0,1,0], [1,rows,cols-1,256], name="c4")
+    c4p = tf.image.resize_images(c1,[28,28])
 
-	colec = np.array([c1p,c2p,c3p,c4p])
-	i= 0
-	logs = np.zeros(shape = [4, 20])
-	flat, num_feats = flatten_layer(tf.convert_to_tensor(c1p))
+    colec = np.array([c1p,c2p,c3p,c4p])
+    i= 0
+    logs = np.zeros(shape = [4, 20])
+    flat, num_feats = flatten_layer(tf.convert_to_tensor(c1p))
 
-	for c in colec:
+    for c in colec:
 
-		fc1 = tf.add(tf.matmul(flat, fc1_W), fc1_b)
+        fc1 = tf.add(tf.matmul(flat, fc1_W), fc1_b)
 
-		fc2 = tf.add(tf.matmul(fc1, fc2_W), fc2_b)
+        fc2 = tf.add(tf.matmul(fc1, fc2_W), fc2_b)
 
-		logits = tf.add(tf.matmul(fc2, outputs), b)
-		logs[i, :] = session.run(logits)
-		i += 1
+        logits = tf.add(tf.matmul(fc2, outputs), b)
+        logs[i, :] = session.run(logits)
+        i += 1
 
+    score = session.run(tf.nn.sigmoid(logs))
+    top = score[:, CLASS]
 
-	score = session.run(tf.nn.softmax(logs))
-	top = score[:, CLASS]
-
-	print ("Softmaxed Porbabilities: ")
-	print (top)
-	mx = np.max(top)
-	print ("\nmax prob: " + str(mx) + "\n")
-
-
-	cut = []
-
-	selector = 0
-
-	while selector < choose:
-
-		selector += 1
-				
-		which = np.argmax(top)
-
-		if which == 0:
-			print("c1 pushed")
-			cut.append(c1)
-				    
-		if which == 1:
-			print("c2 pushed")
-			cut.append(c2)
-		if which == 2:
-			print("c3 pushed")
-			cut.append(c3)
-
-		if which == 3:
-			print("c4 pushed")
-			cut.append(c4)
-
-		top[which] = 0
+    print ("Softmaxed Porbabilities: ")
+    print (top)
+    mx = np.max(top)
+    print ("\nmax prob: " + str(mx) + "\n")
 
 
-	cut = np.asarray(cut)
-	return cut
+    cut = []
+
+    selector = 0
+    print("Pushing ... ", end = "")
+    while selector < choose:
+
+        selector += 1
+                
+        which = np.argmax(top)
+
+        if which == 0:
+            print("c1")
+            cnt[selector - 1,0] += 1
+            cut.append(c1)
+                    
+        if which == 1:
+            print("c2")
+            cnt[selector - 1,1] += 1
+            cut.append(c2)
+
+        if which == 2:
+            print("c3")
+            cnt[selector - 1,2] += 1
+            cut.append(c3)
+
+        if which == 3:
+            print("c4")
+            cnt[selector - 1,3] += 1
+            cut.append(c4)
+
+        top[which] = 0
+
+    return cut,cnt
 
 
 def localize(session, cls, pre_proc_im, itters, beam_width, logits, m5, f, h1, h2, split):
     
-	max_loc_itters = itters
-	# he_init = tf.contrib.layers.variance_scaling_initializer(factor=1, mode='FAN_AVG', uniform=False)
-	# dl = partial(tf.layers.dense, activation = tf.nn.relu, kernel_regularizer=tf.contrib.layers.l1_regularizer(scale),
-	#         kernel_initializer=he_init, use_bias=True, name=None)
+    max_loc_itters = itters
+    # he_init = tf.contrib.layers.variance_scaling_initializer(factor=1, mode='FAN_AVG', uniform=False)
+    # dl = partial(tf.layers.dense, activation = tf.nn.relu, kernel_regularizer=tf.contrib.layers.l1_regularizer(scale),
+    #         kernel_initializer=he_init, use_bias=True, name=None)
 
-	#logits = forw_logs(session, pre_proc_im, m5, 1)
+    #logits = forw_logs(session, pre_proc_im, m5, 1)
 
 
-	print("Running Localization ...")
+    print("Running Localization ...")
 
-	# print(session.run(logits, feed_dict={x: pre_proc_im}))
-	# print(forw_logs (session, pre_proc_im, m5))
+    # print(session.run(logits, feed_dict={x: pre_proc_im}))
+    # print(forw_logs (session, pre_proc_im, m5))
 
-	cands = Queue()
-	cands.put(pre_proc_im)
-	CLASS = cls
+    prospects = session.run(m5, feed_dict={x: [pre_proc_im]})
 
-	i = 0 #itteration number
+    cands = Queue()
+    cands.put(prospects)
+    CLASS = cls
 
-	while cands.empty() == False and i < max_loc_itters:
-		i += 1
-		k = 0 # current beam number
-		while k < beam_width:
-			k+=1
-			print("\n\nAttempt: " + str(i) + ", For Beam: " + str(k)) 
-			if i == 1 :
-				k = beam_width
+    i = 0 #itteration number
+    cnt = np.zeros(shape=(beam_width,4))
+    while cands.empty() == False and i < max_loc_itters:
+        i += 1
+        k = 0 # current beam number
+        while k < beam_width:
+            k+=1
+            print("\n\nAttempt: " + str(i) + ", For Beam: " + str(k)) 
+            if i == 1:
+                k = beam_width
 
             # candidate = cands.get()
 
-			candidate = np.asarray(cands.get())
-			print("Beam has found object of shape:")
-			print(candidate.shape)
+            candidate = np.asarray(cands.get())
+            print("Beam has found object of shape:")
+            print(candidate.shape)
 
-			choose = 1
-			if i == 1:
-				choose = beam_width
+            choose = 1
+            if i == 1:
+                choose = beam_width
 
             
-			candidate = session.run(tf.image.resize_image_with_crop_or_pad(candidate,227,227))
-            print(candidate.shape)
-			cut_col = forw_logs (session, candidate, CLASS, m5, choose)
-            print(cut_col)
-			print("ADDING CUTS..")
-			for cut in cut_col:
-                print(cut)
-				cands.put(cut)
+            # candidate = tf.image.resize_image_with_crop_or_pad(candidate,28,28)
+            # candidate = session.run(candidate)
+            # print(candidate.shape)
+            sz = candidate.shape
+            cut_col, cnt = forw_logs (session, candidate, CLASS, sz, cnt, choose)
 
-				if i == max_loc_itters:
-					print("\n\nSaving..")
-					sm.imsave("./localized_pic" + str(k) + ".jpg", cut)
+            for cut in cut_col:
+                print(cut)
+                cut = session.run(cut)
+
+                sh = cut.shape
+                if sh[1] == 0 or sh[2] == 0:
+                    break
+                
+                cands.put(cut)
+                last_img = cut
+
+                if i == max_loc_itters:
+                    beam = k-1
+                    offset_w = int(cnt[beam,0] * 8)
+                    offset_h = int(cnt[beam, 2] * 8)
+
+                    img_h = int(sh[1] * 8)
+                    img_w = int(sh[2] * 8)
+
+                    prospects = pre_proc_im
+                    
+                    print(str(offset_h) + ", " + str(offset_w) + ", " + str(img_h) + ", " + str(img_w))
+
+                    prospects = prospects[offset_h:offset_h+img_h, offset_w:offset_w+img_w]
+                    last_img = prospects
+                    print(last_img.shape)
+                    print("\n\nSaving..")
+                    
+                    sm.imsave("./localized_pic" + str(k) + ".jpg", last_img[:,:,:])
+            
+            # print("\n\n\n PRINTING ELEMENTS IN QUEUE: \n\n")
+            # while (cands.empty() != True):
+            #     omnom = cands.get()
+            #     print (omnom)
+
 
 def run_net(y_labs, y_true, restore):
     
@@ -447,7 +490,9 @@ def run_net(y_labs, y_true, restore):
         cands = Queue()
         cands.put(pre_proc_im)
         CLASS = 14
-        localize(session, CLASS, pre_proc_im, 80, 2, logits, 
+        its = 10
+        num_beams = 2
+        localize(session, CLASS, pre_proc_im, its, num_beams, logits, 
                 layer_conv5, layer_flat, layer_fc1, layer_fc2, 1)
 
         
