@@ -380,8 +380,6 @@ def run_net(y_labs, y_true, restore):
     bn7 = bnl(layer_fc2)
     bn7_act = tf.nn.relu(bn7)
     fc2_dropped = tf.layers.dropout(bn7_act, 0.5, training=training)
-1440 -> 3354 bytes
- 1 file changed, 0 insertions(+), 0 deletions(-)
 
     logits = dl(fc2_dropped, num_classes, activation=None, name="outputs")
     # logits = bnl(pre_logits)
