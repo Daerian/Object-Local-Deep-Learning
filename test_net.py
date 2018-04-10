@@ -170,6 +170,7 @@ def forw_logs (session, prospects, CLASS, sz, cnt, choose):
     c4 = tf.slice(prospects, [0,0,1,0], [1,rows,cols-1,256], name="c4")
     c4p = tf.image.resize_images(c1,[28,28])
 
+
     colec = np.array([c1p,c2p,c3p,c4p])
     i= 0
     logs = np.zeros(shape = [4, 20])
@@ -180,7 +181,7 @@ def forw_logs (session, prospects, CLASS, sz, cnt, choose):
         fc1 = tf.add(tf.matmul(flat, fc1_W), fc1_b)
 
         fc2 = tf.add(tf.matmul(fc1, fc2_W), fc2_b)
-
+wolfscanyon@live.com
         logits = tf.add(tf.matmul(fc2, outputs), b)
         logs[i, :] = session.run(logits)
         i += 1
@@ -485,13 +486,13 @@ def run_net(y_labs, y_true, restore):
         #split into 4
         # pre_proc_im = np.zeros(shape=(1,227,227,3))
         # pre_proc_im[0,:,:,:] = cv[95,:]
-        pre_proc_im = cv[23,:]
+        pre_proc_im = cv[95,:]
 
         cands = Queue()
         cands.put(pre_proc_im)
         CLASS = 14
-        its = 12
-        num_beams = 1
+        its = 10
+        num_beams = 3
         localize(session, CLASS, pre_proc_im, its, num_beams, logits, 
                 layer_conv5, layer_flat, layer_fc1, layer_fc2, 1)
 
