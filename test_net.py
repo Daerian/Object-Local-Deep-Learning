@@ -387,7 +387,7 @@ def run_net(y_labs, y_true, restore):
 
     # Cross entropy cost function
     cross_entropy = tf.nn.sigmoid_cross_entropy_with_logits(logits=logits,
-                              s                              labels=tf.cast(tf.reshape(y_true, [batch_size, num_classes]), tf.float32))
+                                                            labels=tf.cast(tf.reshape(y_true, [batch_size, num_classes]), tf.float32))
     # get loss including regularization
     base_loss = tf.reduce_mean(cross_entropy)
     reg_losses = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
