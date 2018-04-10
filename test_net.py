@@ -46,6 +46,7 @@ num_channels = 3
 
 # Number of classes, one class for each of 10 digits.
 num_classes = 20
+
 scale = 0.0005
 
 training = tf.placeholder_with_default(False, shape=(), name='training')
@@ -167,6 +168,7 @@ def forw_logs (session, prospects, CLASS, sz, cnt, choose):
     c2p = tf.image.resize_images(c1,[28,28])
     c3 = tf.slice(prospects, [0,0,0,0], [1,rows,cols-1,256], name="c3")
     c3p = tf.image.resize_images(c1,[28,28])
+
     c4 = tf.slice(prospects, [0,0,1,0], [1,rows,cols-1,256], name="c4")
     c4p = tf.image.resize_images(c1,[28,28])
 
@@ -490,8 +492,8 @@ def run_net(y_labs, y_true, restore):
         cands = Queue()
         cands.put(pre_proc_im)
         CLASS = 14
-        its = 10
-        num_beams = 3
+        its = 12
+        num_beams = 2
         localize(session, CLASS, pre_proc_im, its, num_beams, logits, 
                 layer_conv5, layer_flat, layer_fc1, layer_fc2, 1)
 
@@ -555,6 +557,7 @@ def run_net(y_labs, y_true, restore):
         # Ending time
         end_time = time.time()
         save_path = saver.save(session, "./voc07_model_3.ckpt")
+
         # Difference between start and end-times
         time_dif = end_time - start_time
 
