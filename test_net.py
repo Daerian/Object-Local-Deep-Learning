@@ -491,7 +491,7 @@ def run_net(y_labs, y_true, restore):
         cands.put(pre_proc_im)
         CLASS = 14
         its = 12
-        num_beams = 2
+        num_beams = 1
         localize(session, CLASS, pre_proc_im, its, num_beams, logits, 
                 layer_conv5, layer_flat, layer_fc1, layer_fc2, 1)
 
