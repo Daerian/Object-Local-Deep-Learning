@@ -181,7 +181,6 @@ def forw_logs (session, prospects, CLASS, sz, cnt, choose):
         fc1 = tf.add(tf.matmul(flat, fc1_W), fc1_b)
 
         fc2 = tf.add(tf.matmul(fc1, fc2_W), fc2_b)
-wolfscanyon@live.com
         logits = tf.add(tf.matmul(fc2, outputs), b)
         logs[i, :] = session.run(logits)
         i += 1
@@ -262,7 +261,7 @@ def localize(session, cls, pre_proc_im, itters, beam_width, logits, m5, f, h1, h
             if i == 1:
                 k = beam_width
 
-            # candidate = cands.get()
+            # candidate = cands.get()s
 
             candidate = np.asarray(cands.get())
             print("Beam has found object of shape:")
@@ -388,7 +387,7 @@ def run_net(y_labs, y_true, restore):
 
     # Cross entropy cost function
     cross_entropy = tf.nn.sigmoid_cross_entropy_with_logits(logits=logits,
-                                                            labels=tf.cast(tf.reshape(y_true, [batch_size, num_classes]), tf.float32))
+                              s                              labels=tf.cast(tf.reshape(y_true, [batch_size, num_classes]), tf.float32))
     # get loss including regularization
     base_loss = tf.reduce_mean(cross_entropy)
     reg_losses = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
