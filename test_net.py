@@ -257,10 +257,7 @@ def localize(session, cls, pre_proc_im, itters, beam_width, logits, m5, f, h1, h
         k = 0 # current beam number
         while k < beam_width:
             k+=1
-            print("\n\nAt
-Username for 'https://github.com': Daerian
-Password for 'https://Daerian@github.com': 
-tempt: " + str(i) + ", For Beam: " + str(k)) 
+            print("\n\nAttempt: " + str(i) + ", For Beam: " + str(k)) 
             if i == 1:
                 k = beam_width
 
@@ -286,10 +283,7 @@ tempt: " + str(i) + ", For Beam: " + str(k))
                 cut = session.run(cut)
 
                 sh = cut.shape
-                if sh[1]
-Username for 'https://github.com': Daerian
-Password for 'https://Daerian@github.com': 
- == 0 or sh[2] == 0:
+                if sh[1] == 0 or sh[2] == 0:
                     break
                 
                 cands.put(cut)
@@ -353,9 +347,6 @@ def run_net(y_labs, y_true, restore):
                 use_relu=True,
                 use_local_norm=False,
                 dropout_rate=0.0)
-
-Username for 'https://github.com': Daerian
-Password for 'https://Daerian@github.com': 
     bn3 = bnl(layer_conv3)
 
     layer_conv4, weights_conv4 = \
@@ -389,6 +380,8 @@ Password for 'https://Daerian@github.com':
     bn7 = bnl(layer_fc2)
     bn7_act = tf.nn.relu(bn7)
     fc2_dropped = tf.layers.dropout(bn7_act, 0.5, training=training)
+1440 -> 3354 bytes
+ 1 file changed, 0 insertions(+), 0 deletions(-)
 
     logits = dl(fc2_dropped, num_classes, activation=None, name="outputs")
     # logits = bnl(pre_logits)
