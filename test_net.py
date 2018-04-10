@@ -485,12 +485,12 @@ def run_net(y_labs, y_true, restore):
         #split into 4
         # pre_proc_im = np.zeros(shape=(1,227,227,3))
         # pre_proc_im[0,:,:,:] = cv[95,:]
-        pre_proc_im = cv[95,:]
+        pre_proc_im = cv[23,:]
 
         cands = Queue()
         cands.put(pre_proc_im)
         CLASS = 14
-        its = 10
+        its = 12
         num_beams = 2
         localize(session, CLASS, pre_proc_im, its, num_beams, logits, 
                 layer_conv5, layer_flat, layer_fc1, layer_fc2, 1)
